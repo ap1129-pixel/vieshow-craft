@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VieShow Craft — 專案管理系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1510;
+    --paper: #f5f0e8;
+    --cream: #ede6d6;
+    --gold: #b8922a;
+    --gold-light: #d4aa4a;
+    --rust: #8b3a2a;
+    --sage: #4a5c4e;
+    --mist: #c8cfc4;
+    --border: #c4b89a;
+    --shadow: rgba(26,21,16,0.15);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 15px;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(184,146,42,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(74,92,78,0.05) 0%, transparent 50%);
+  }
+
+  header {
+    background: var(--ink); color: var(--paper);
+    padding: 0 2.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 20px var(--shadow);
+  }
+  .logo { display: flex; align-items: baseline; gap: 0.6rem; }
+  .logo-main { font-size: 1.3rem; font-weight: 900; letter-spacing: 0.04em; color: var(--gold-light); }
+  .logo-sub { font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--mist); }
+  .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+  .sync-indicator { font-size: 0.75rem; color: var(--gold-light); font-family: 'DM Mono', monospace; opacity: 0; transition: opacity 0.3s; letter-spacing: 0.08em; }
+
+  .btn { font-family: 'Noto Sans TC', sans-serif; font-size: 0.85rem; font-weight: 500; padding: 0.5rem 1.1rem; border: none; cursor: pointer; transition: all 0.2s; border-radius: 3px; }
+  .btn-ghost { background: transparent; color: var(--mist); border: 1px solid rgba(196,184,154,0.3); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.07); color: var(--paper); }
+  .btn-primary { background: var(--gold); color: var(--ink); font-weight: 700; }
+  .btn-primary:hover { background: var(--gold-light); }
+  .btn-danger { background: var(--rust); color: var(--paper); }
+  .btn-danger:hover { background: #a84535; }
+  .btn-sm { font-size: 0.78rem; padding: 0.35rem 0.7rem; }
+
+  .app-layout { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 64px); }
+
+  aside {
+    background: var(--cream); border-right: 1px solid var(--border);
+    padding: 1.5rem 0; position: sticky; top: 64px;
+    height: calc(100vh - 64px); overflow-y: auto;
+  }
+  .sidebar-section { padding: 0 1.25rem 1rem; margin-bottom: 0.5rem; }
+  .sidebar-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .nav-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.75rem; border-radius: 3px; cursor: pointer; font-size: 0.95rem; font-weight: 500; color: var(--ink); transition: all 0.15s; margin-bottom: 0.15rem; }
+  .nav-item:hover { background: rgba(184,146,42,0.1); }
+  .nav-item.active { background: var(--ink); color: var(--gold-light); }
+  .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+  .stat-pill { display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.75rem; background: white; border: 1px solid var(--border); border-radius: 3px; margin-bottom: 0.5rem; }
+  .stat-pill-label { font-size: 0.85rem; color: #555; font-weight: 500; }
+  .stat-pill-val { font-family: 'DM Mono', monospace; font-size: 0.9rem; font-weight: 500; color: var(--gold); }
+
+  main { padding: 2rem 2.5rem; overflow-y: auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--ink); }
+  .page-title { font-size: 2rem; font-weight: 900; line-height: 1; }
+  .page-sub { font-family: 'DM Mono', monospace; font-size: 0.75rem; letter-spacing: 0.12em; color: var(--gold); margin-top: 0.4rem; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card { background: white; border: 1px solid var(--border); padding: 1.25rem 1.4rem; border-radius: 4px; position: relative; overflow: hidden; }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background: var(--gold); }
+  .stat-card.rust::before { background: var(--rust); }
+  .stat-card.sage::before { background: var(--sage); }
+  .stat-card-label { font-size: 0.82rem; font-weight: 600; color: #777; margin-bottom: 0.5rem; }
+  .stat-card-val { font-size: 2rem; font-weight: 900; color: var(--ink); line-height: 1; }
+  .stat-card-unit { font-size: 0.82rem; color: #888; margin-top: 0.25rem; }
+
+  .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 1.25rem; }
+  .project-card { background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; }
+  .project-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px var(--shadow); border-color: var(--gold); }
+  .card-accent { height: 4px; background: linear-gradient(90deg, var(--gold), var(--gold-light)); flex-shrink: 0; }
+  .card-body { padding: 1.25rem 1.4rem; flex: 1; display: flex; flex-direction: column; }
+  .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.2rem; }
+  .card-type { font-size: 0.82rem; color: var(--gold); font-weight: 600; margin-bottom: 0.85rem; }
+  .card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem 0.75rem; margin-bottom: 0.85rem; }
+  .card-meta-item label { font-size: 0.72rem; color: #999; display: block; font-weight: 600; }
+  .card-meta-item span { font-size: 0.9rem; font-weight: 500; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: auto; padding-top: 0.6rem; }
+  .tag { font-size: 0.75rem; font-weight: 500; padding: 0.22rem 0.55rem; background: var(--cream); border: 1px solid var(--border); border-radius: 2px; }
+  .tag.highlight { background: rgba(184,146,42,0.12); border-color: var(--gold); color: #7a5e10; }
+  .card-footer { padding: 0.75rem 1.4rem; background: var(--cream); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .cost-display .cost-val { font-family: 'DM Mono', monospace; font-size: 1.05rem; color: var(--rust); font-weight: 500; }
+  .cost-display .cost-label { font-size: 0.72rem; color: #999; font-weight: 500; }
+
+  /* ── Image Upload ── */
+  .img-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 4px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+    position: relative;
+  }
+  .img-upload-area:hover { border-color: var(--gold); background: rgba(184,146,42,0.04); }
+  .img-upload-area.has-img { border-style: solid; border-color: var(--gold); padding: 0; overflow: hidden; }
+  .img-upload-area img { width: 100%; max-height: 200px; object-fit: contain; display: block; background: #f8f6f2; }
+  .img-upload-hint { font-size: 0.85rem; color: #aaa; font-weight: 500; }
+  .img-upload-hint span { display: block; font-size: 0.72rem; margin-top: 0.3rem; color: #bbb; }
+  .img-upload-icon { font-size: 2rem; margin-bottom: 0.5rem; color: var(--border); }
+  .img-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .img-actions button { flex: 1; font-size: 0.78rem; padding: 0.35rem 0; }
+
+  /* Card thumbnail */
+  .card-thumb { width: 100%; height: 160px; object-fit: cover; display: block; border-bottom: 1px solid var(--border); background: var(--cream); }
+  .card-thumb-placeholder { width: 100%; height: 100px; background: var(--cream); display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 2rem; border-bottom: 1px solid var(--border); }
+
+  /* Detail image */
+  .detail-img { width: 100%; max-height: 320px; object-fit: contain; border-radius: 3px; border: 1px solid var(--border); background: #f8f6f2; display: block; }
+
+  .table-controls { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; }
+  .search-box { flex: 1; padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: 3px; font-family: 'Noto Sans TC', sans-serif; font-size: 0.95rem; background: white; color: var(--ink); outline: none; }
+  .search-box:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,146,42,0.1); }
+  .data-table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .data-table thead { background: var(--ink); color: var(--paper); }
+  .data-table th { padding: 0.85rem 1rem; text-align: left; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; }
+  .data-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--cream); font-size: 0.9rem; vertical-align: top; }
+  .data-table tr:hover td { background: rgba(184,146,42,0.04); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .cost-mono { font-family: 'DM Mono', monospace; color: var(--rust); font-weight: 500; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(26,21,16,0.65); z-index: 200; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; width: min(780px, 94vw); max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(26,21,16,0.35); animation: slideUp 0.25s ease; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  .modal-header { padding: 1.4rem 1.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-title { font-size: 1.4rem; font-weight: 700; }
+  .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; line-height: 1; }
+  .modal-close:hover { color: var(--rust); }
+  .modal-body { padding: 1.5rem 1.75rem; }
+  .modal-footer { padding: 1rem 1.75rem 1.4rem; display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+  .form-group.full { grid-column: 1/-1; }
+  .form-label { font-size: 0.82rem; font-weight: 700; color: #555; }
+  .form-label .req { color: var(--rust); margin-left: 2px; }
+  .form-input, .form-textarea, .form-select { padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; font-family: 'Noto Sans TC', sans-serif; font-size: 0.95rem; background: white; color: var(--ink); outline: none; transition: border-color 0.15s; }
+  .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,146,42,0.1); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .section-divider { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin: 1.25rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+
+  /* Process checkboxes */
+  .process-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 0.5rem; }
+  .pci { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.55rem 0.65rem; border: 1px solid var(--border); border-radius: 3px; background: white; cursor: pointer; transition: all 0.15s; }
+  .pci:hover { border-color: var(--gold); background: rgba(184,146,42,0.05); }
+  .pci.checked { border-color: var(--gold); background: rgba(184,146,42,0.1); }
+  .pci input[type=checkbox] { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--gold); margin-top: 2px; cursor: pointer; }
+  .pci-label { flex: 1; font-size: 0.9rem; font-weight: 500; line-height: 1.4; cursor: pointer; }
+  .pci-sub { width: 100%; margin-top: 0.4rem; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 2px; font-size: 0.85rem; font-family: 'Noto Sans TC', sans-serif; outline: none; display: none; background: white; }
+  .pci.checked .pci-sub { display: block; }
+  .pci-sub:focus { border-color: var(--gold); }
+
+  /* Analytics */
+  .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .chart-card { background: white; border: 1px solid var(--border); border-radius: 4px; padding: 1.25rem 1.5rem; }
+  .chart-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.25rem; }
+  .bar-chart { display: flex; flex-direction: column; gap: 0.65rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.75rem; }
+  .bar-label { font-size: 0.85rem; font-weight: 500; width: 130px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 22px; background: var(--cream); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg,var(--gold),var(--gold-light)); border-radius: 2px; transition: width 0.8s cubic-bezier(.2,.8,.3,1); }
+  .bar-val { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--rust); width: 65px; text-align: right; flex-shrink: 0; font-weight: 500; }
+  .material-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .material-pill { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500; background: var(--cream); border: 1px solid var(--border); display: flex; align-items: center; gap: 0.45rem; }
+  .material-pill-count { font-family: 'DM Mono', monospace; font-size: 0.72rem; background: var(--ink); color: var(--gold-light); padding: 0.1rem 0.45rem; border-radius: 10px; }
+
+  /* Detail */
+  .detail-section { margin-bottom: 1.5rem; }
+  .detail-heading { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem 1.5rem; }
+  .detail-field label { font-size: 0.75rem; color: #999; font-weight: 600; display: block; margin-bottom: 0.15rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .detail-field span { font-size: 0.95rem; font-weight: 500; }
+  .process-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--ink); color: var(--paper); padding: 0.8rem 1.3rem; border-radius: 4px; font-size: 0.9rem; font-weight: 500; border-left: 3px solid var(--gold); z-index: 999; animation: toastIn 0.3s ease; display: none; }
+  .toast.show { display: block; }
+  @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── Password Lock ── */
+  .lock-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    background-image:
+      radial-gradient(ellipse at 30% 60%, rgba(184,146,42,0.08) 0%, transparent 55%),
+      radial-gradient(ellipse at 75% 25%, rgba(184,146,42,0.05) 0%, transparent 50%);
+  }
+  .lock-box {
+    width: min(400px, 90vw);
+    text-align: center;
+    animation: slideUp 0.4s ease;
+  }
+  .lock-logo {
+    font-size: 1.6rem; font-weight: 900;
+    color: var(--gold-light); letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+  }
+  .lock-sub {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--mist); margin-bottom: 2.5rem;
+  }
+  .lock-label {
+    font-size: 0.8rem; font-weight: 600; color: var(--mist);
+    text-align: left; display: block; margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+  .lock-input {
+    width: 100%; padding: 0.75rem 1rem;
+    border: 1px solid rgba(196,184,154,0.25);
+    border-radius: 4px; background: rgba(255,255,255,0.06);
+    color: var(--paper); font-size: 1rem;
+    font-family: 'DM Mono', monospace; letter-spacing: 0.15em;
+    outline: none; transition: border-color 0.2s; margin-bottom: 1rem;
+    text-align: center;
+  }
+  .lock-input:focus { border-color: var(--gold); }
+  .lock-input.shake {
+    animation: shake 0.4s ease;
+    border-color: var(--rust) !important;
+  }
+  .lock-btn {
+    width: 100%; padding: 0.75rem;
+    background: var(--gold); color: var(--ink);
+    font-size: 0.95rem; font-weight: 700;
+    border: none; border-radius: 4px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .lock-btn:hover { background: var(--gold-light); }
+  .lock-error {
+    font-size: 0.82rem; color: var(--rust);
+    margin-top: 0.75rem; min-height: 1.2em;
+    font-weight: 500;
+  }
+  .lock-divider {
+    width: 40px; height: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    margin: 0 auto 2rem;
+    border-radius: 2px;
+  }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-6px)}
+    80%{transform:translateX(6px)}
+  }
+
+  .year-badge { font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 500; padding: 0.2rem 0.5rem; background: var(--ink); color: var(--gold-light); border-radius: 2px; }
+  .empty-state { text-align: center; padding: 4rem 2rem; color: #aaa; }
+  .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  @media (max-width: 900px) {
+    .app-layout { grid-template-columns: 1fr; }
+    aside { display: none; }
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+    .analytics-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Lock Screen -->
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-logo">VieShow Craft</div>
+    <div class="lock-sub">專案管理系統</div>
+    <div class="lock-divider"></div>
+    <label class="lock-label">請輸入存取密碼</label>
+    <input class="lock-input" id="lock-input" type="password" placeholder="••••••••••"
+      onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="lock-btn" onclick="checkPassword()">進入系統</button>
+    <div class="lock-error" id="lock-error"></div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <span class="logo-main">VieShow Craft</span>
+    <span class="logo-sub">專案管理系統</span>
+  </div>
+  <div class="header-actions">
+    <span class="sync-indicator" id="sync-indicator">⟳ 同步中…</span>
+    <button class="btn btn-ghost" onclick="loadAndRender()">↺ 重新整理</button>
+    <button class="btn btn-primary" onclick="openNewForm()">＋ 新增專案</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside>
+    <div class="sidebar-section">
+      <div class="sidebar-label">瀏覽</div>
+      <div class="nav-item active" onclick="switchView('dashboard',this)"><span class="nav-icon">◈</span> 總覽</div>
+      <div class="nav-item" onclick="switchView('cards',this)"><span class="nav-icon">▦</span> 專案卡片</div>
+      <div class="nav-item" onclick="switchView('table',this)"><span class="nav-icon">≡</span> 列表檢視</div>
+      <div class="nav-item" onclick="switchView('analytics',this)"><span class="nav-icon">◎</span> 成本分析</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">統計</div>
+      <div class="stat-pill"><span class="stat-pill-label">專案總數</span><span class="stat-pill-val" id="sb-total">—</span></div>
+      <div class="stat-pill"><span class="stat-pill-label">平均單份成本</span><span class="stat-pill-val" id="sb-avgcost">—</span></div>
+      <div class="stat-pill"><span class="stat-pill-label">總印製份數</span><span class="stat-pill-val" id="sb-prints">—</span></div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Dashboard -->
+    <div class="view active" id="view-dashboard">
+      <div class="page-header">
+        <div><div class="page-title">總覽</div><div class="page-sub" id="dash-subtitle">—</div></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-card-label">專案總數</div><div class="stat-card-val" id="stat-count">0</div><div class="stat-card-unit">個專案</div></div>
+        <div class="stat-card rust"><div class="stat-card-label">最高單份成本</div><div class="stat-card-val" id="stat-maxcost">—</div><div class="stat-card-unit" id="stat-maxname">—</div></div>
+        <div class="stat-card sage"><div class="stat-card-label">最大印製量</div><div class="stat-card-val" id="stat-maxprint">—</div><div class="stat-card-unit" id="stat-maxprintname">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">後加工工藝種類</div><div class="stat-card-val" id="stat-techniques">—</div><div class="stat-card-unit">種已使用</div></div>
+      </div>
+      <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);padding-bottom:0.4rem;border-bottom:1px solid var(--border);margin-bottom:1rem">近期專案</div>
+      <div class="projects-grid" id="dash-recent"></div>
+    </div>
+
+    <!-- Cards -->
+    <div class="view" id="view-cards">
+      <div class="page-header">
+        <div><div class="page-title">專案卡片</div><div class="page-sub">所有專案一覽</div></div>
+      </div>
+      <div class="projects-grid" id="all-cards"></div>
+    </div>
+
+    <!-- Table -->
+    <div class="view" id="view-table">
+      <div class="page-header">
+        <div><div class="page-title">列表檢視</div><div class="page-sub">完整資料表格</div></div>
+      </div>
+      <div class="table-controls">
+        <input class="search-box" id="table-search" placeholder="搜尋品名、品項、執行設計、販售形式…" oninput="renderTable()">
+      </div>
+      <table class="data-table">
+        <thead><tr>
+          <th>年份</th><th>品名</th><th>品項</th><th>執行設計</th><th>販售形式</th>
+          <th>總印份</th><th>單份成本</th><th>預算</th><th>後加工工藝</th><th>操作</th>
+        </tr></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Analytics -->
+    <div class="view" id="view-analytics">
+      <div class="page-header">
+        <div><div class="page-title">成本分析</div><div class="page-sub">工藝與費用統計</div></div>
+      </div>
+      <div class="analytics-grid">
+        <div class="chart-card"><div class="chart-title">各專案單份成本排名</div><div class="bar-chart" id="chart-cost"></div></div>
+        <div class="chart-card"><div class="chart-title">各專案印製份數</div><div class="bar-chart" id="chart-prints"></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">後加工工藝使用頻率</div><div class="material-list" id="chart-materials"></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Form Modal -->
+<div class="modal-overlay" id="form-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">新增專案</span>
+      <button class="modal-close" onclick="closeModal('form-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="f-id">
+
+      <div class="section-divider">基本資訊</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">品名 <span class="req">*</span></label>
+          <input class="form-input" id="f-name" placeholder="e.g. 魔法公主">
+        </div>
+        <div class="form-group">
+          <label class="form-label">年份</label>
+          <input class="form-input" id="f-year" placeholder="e.g. 2026">
+        </div>
+        <div class="form-group">
+          <label class="form-label">品項 <span class="req">*</span></label>
+          <input class="form-input" id="f-item" placeholder="e.g. A3海報*2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">執行設計 <span class="req">*</span></label>
+          <input class="form-input" id="f-designer" placeholder="e.g. 王小明">
+        </div>
+        <div class="form-group">
+          <label class="form-label">販售形式</label>
+          <input class="form-input" id="f-sale" placeholder="e.g. 特別場、套票">
+        </div>
+        <div class="form-group">
+          <label class="form-label">販售金額</label>
+          <input class="form-input" id="f-price" placeholder="e.g. $599 / 票+爆米花$180">
+        </div>
+        <div class="form-group">
+          <label class="form-label">狀態</label>
+          <select class="form-select" id="f-status">
+            <option value="規劃中">規劃中</option>
+            <option value="進行中">進行中</option>
+            <option value="已完成">已完成</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-divider">成本資訊</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">總印製份數</label>
+          <input class="form-input" id="f-prints" placeholder="e.g. 8108（套）">
+        </div>
+        <div class="form-group">
+          <label class="form-label">單份成本（元）</label>
+          <input class="form-input" id="f-cost" placeholder="e.g. 44.97">
+        </div>
+        <div class="form-group">
+          <label class="form-label">原設定預算（萬）</label>
+          <input class="form-input" id="f-budget" placeholder="e.g. 15">
+        </div>
+      </div>
+
+      <div class="section-divider">印刷材質</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">使用紙材</label>
+          <input class="form-input" id="f-paper" placeholder="e.g. 美階晶采紙、銀箔卡">
+        </div>
+        <div class="form-group">
+          <label class="form-label">紙張磅數</label>
+          <input class="form-input" id="f-gsm" placeholder="e.g. 250gsm、350磅">
+        </div>
+      </div>
+
+      <div class="section-divider">後加工工藝（可複選）</div>
+      <div class="process-grid" id="process-checkboxes"></div>
+
+      <div class="section-divider">示意圖</div>
+      <div class="form-group full">
+        <div class="img-upload-area" id="img-upload-area" onclick="document.getElementById('f-image-file').click()">
+          <div id="img-preview-wrap">
+            <div class="img-upload-icon">🖼</div>
+            <div class="img-upload-hint">點擊上傳示意圖<span>支援 JPG、PNG、WEBP，建議寬度 800px 以上</span></div>
+          </div>
+        </div>
+        <input type="file" id="f-image-file" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+        <div class="img-actions" id="img-actions" style="display:none">
+          <button class="btn btn-ghost" onclick="document.getElementById('f-image-file').click()" style="color:var(--ink)">更換圖片</button>
+          <button class="btn btn-danger" onclick="clearImage()">移除圖片</button>
+        </div>
+      </div>
+
+      <div class="section-divider">備註</div>
+      <div class="form-group">
+        <textarea class="form-textarea" id="f-notes" placeholder="其他補充說明…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('form-modal')" style="color:var(--ink)">取消</button>
+      <button class="btn btn-primary" onclick="saveProject()">儲存專案</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="detail-title">—</span>
+      <button class="modal-close" onclick="closeModal('detail-modal')">×</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="deleteCurrentProject()">刪除</button>
+      <button class="btn btn-ghost" onclick="closeModal('detail-modal')" style="color:var(--ink)">關閉</button>
+      <button class="btn btn-primary" onclick="editCurrentProject()">編輯</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════ SUPABASE 設定 ══════
+const SUPABASE_URL = 'https://zbbwueukfcaqsexexgrn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnd1ZXVrZmNhcXNleGV4Z3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDUxNjMsImV4cCI6MjA5MjQyMTE2M30.Tru7YL4vQmfeWp1hAbyQceBrXLT4DaoE94tcmZ678_c';
+const API = `${SUPABASE_URL}/rest/v1/projects`;
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Prefer': 'return=representation'
+};
+
+async function sbFetch(url, options={}) {
+  const res = await fetch(url, { ...options, headers: { ...HEADERS, ...options.headers } });
+  if (!res.ok) { const e = await res.text(); throw new Error(e); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+async function dbGetAll() {
+  return await sbFetch(`${API}?order=created_at.asc`);
+}
+async function dbUpsert(proj) {
+  return await sbFetch(API, {
+    method: 'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify(proj)
+  });
+}
+async function dbDelete(id) {
+  return await sbFetch(`${API}?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+// ══════ 後加工工藝（固定順序）══════
+const PROCESS_OPTIONS = [
+  { key:'fogP',      label:'霧P',       sub:false },
+  { key:'mold',      label:'上模',       sub:false },
+  { key:'spotGloss', label:'局部上光',   sub:false },
+  { key:'spotMatte', label:'局部磨砂',   sub:false },
+  { key:'foil',      label:'燙金',       sub:true, placeholder:'顏色，e.g. 碎藍、紅' },
+  { key:'emboss',    label:'打凸',       sub:false },
+  { key:'deboss',    label:'打凹',       sub:false },
+  { key:'uvExclude', label:'UV互斥油',   sub:false },
+  { key:'invisible', label:'隱形油',     sub:false },
+  { key:'glow',      label:'夜光油',     sub:false },
+  { key:'other',     label:'其他',       sub:true, placeholder:'請說明' },
+];
+
+// ══════ DATA ══════
+// ══════ DATA CACHE ══════
+let currentDetailId = null;
+let DB_CACHE = [];
+let isLoading = false;
+
+function uid() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+async function loadAndRender() {
+  setLoadingState(true);
+  try {
+    DB_CACHE = await dbGetAll();
+  } catch(e) {
+    toast('✗ 無法連線資料庫，請檢查網路');
+    DB_CACHE = [];
+  }
+  setLoadingState(false);
+  renderAll();
+}
+
+function setLoadingState(on) {
+  isLoading = on;
+  const indicator = document.getElementById('sync-indicator');
+  if (indicator) indicator.style.opacity = on ? '1' : '0';
+}
+
+function getProcessList(proc) {
+  if (!proc) return [];
+  return PROCESS_OPTIONS
+    .filter(o => proc[o.key] && proc[o.key].checked)
+    .map(o => {
+      const e = proc[o.key];
+      return (o.sub && e.val) ? `${o.label}（${e.val}）` : o.label;
+    });
+}
+
+// ══════ UI ══════
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+function switchView(id,el) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderAll();
+}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function statusColor(s){ return s==='已完成'?'var(--sage)':s==='進行中'?'var(--gold)':'var(--rust)'; }
+
+// ══════ RENDER ══════
+function buildCard(p) {
+  const hasCost = p.cost && parseFloat(p.cost)>0;
+  const pl = getProcessList(p.process);
+  const tags = pl.slice(0,4).map(t=>`<span class="tag highlight">${t}</span>`).join('');
+  const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor(p.status)};margin-right:5px;vertical-align:middle;"></span>`;
+  const thumbHtml = p.image
+    ? `<img class="card-thumb" src="${p.image}" alt="${p.name}">`
+    : `<div class="card-thumb-placeholder">◈</div>`;
+  return `<div class="project-card" onclick="openDetail('${p.id}')">
+    ${thumbHtml}
+    <div class="card-accent"></div>
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.2rem">
+        <div class="card-title">${p.name}</div>
+        <span class="year-badge">${p.year||'—'}</span>
+      </div>
+      <div class="card-type">${p.item}</div>
+      <div class="card-meta">
+        <div class="card-meta-item"><label>執行設計</label><span>${p.designer||'—'}</span></div>
+        <div class="card-meta-item"><label>狀態</label><span>${dot}${p.status||'—'}</span></div>
+        <div class="card-meta-item"><label>販售形式</label><span>${p.sale||'—'}</span></div>
+        <div class="card-meta-item"><label>紙材</label><span>${p.paper?(p.paper+(p.gsm?' · '+p.gsm:'')):'—'}</span></div>
+        <div class="card-meta-item"><label>印製份數</label><span>${p.prints||'—'}</span></div>
+        <div class="card-meta-item"><label>後加工</label><span>${pl.length?'共 '+pl.length+' 項':'—'}</span></div>
+      </div>
+      <div class="card-tags">${tags}</div>
+    </div>
+    <div class="card-footer">
+      <div class="cost-display">
+        <div class="cost-label">單份成本</div>
+        <div class="cost-val">${hasCost?'$'+parseFloat(p.cost).toFixed(2):'—'}</div>
+      </div>
+      ${p.budget?`<span class="tag">預算 ${p.budget}萬</span>`:''}
+    </div>
+  </div>`;
+}
+
+function renderDashboard() {
+  const data = DB_CACHE;
+  const pp=p=>parseInt((p.prints||'').replace(/[^0-9]/g,''))||0;
+  const wC=data.filter(p=>p.cost&&parseFloat(p.cost)>0);
+  document.getElementById('dash-subtitle').textContent=`共 ${data.length} 個專案 · ${[...new Set(data.map(p=>p.year).filter(Boolean))].join(', ')}`;
+  document.getElementById('stat-count').textContent=data.length;
+  if(wC.length){const mx=wC.reduce((a,b)=>parseFloat(a.cost)>parseFloat(b.cost)?a:b);document.getElementById('stat-maxcost').textContent='$'+parseFloat(mx.cost).toFixed(0);document.getElementById('stat-maxname').textContent=mx.name;}
+  const wP=data.filter(p=>pp(p)>0);
+  if(wP.length){const mx=wP.reduce((a,b)=>pp(a)>pp(b)?a:b);document.getElementById('stat-maxprint').textContent=pp(mx).toLocaleString();document.getElementById('stat-maxprintname').textContent=mx.name;}
+  const allT=data.flatMap(p=>getProcessList(p.process).map(t=>t.split('（')[0]));
+  document.getElementById('stat-techniques').textContent=[...new Set(allT)].length;
+  document.getElementById('sb-total').textContent=data.length;
+  const avg=wC.length?(wC.reduce((s,p)=>s+parseFloat(p.cost),0)/wC.length).toFixed(1):'—';
+  document.getElementById('sb-avgcost').textContent=avg!=='—'?'$'+avg:'—';
+  document.getElementById('sb-prints').textContent=data.reduce((s,p)=>s+pp(p),0).toLocaleString();
+  const recent=[...data].slice(-4).reverse();
+  document.getElementById('dash-recent').innerHTML=recent.map(buildCard).join('')||`<div class="empty-state"><div class="empty-state-icon">◈</div><p>尚無專案</p></div>`;
+}
+
+function renderCards() {
+  const data = DB_CACHE;
+  document.getElementById('all-cards').innerHTML=data.length?data.map(buildCard).join(''):`<div class="empty-state"><div class="empty-state-icon">◈</div><p>尚無專案，請新增</p></div>`;
+}
+
+function renderTable() {
+  const data = DB_CACHE;
+  const q=(document.getElementById('table-search')?.value||'').toLowerCase();
+  const filtered=q?data.filter(p=>[p.name,p.item,p.sale,p.paper,p.designer,...getProcessList(p.process)].join(' ').toLowerCase().includes(q)):data;
+  document.getElementById('table-body').innerHTML=filtered.map(p=>{
+    const pl=getProcessList(p.process);
+    return `<tr>
+      <td><span class="year-badge">${p.year||'—'}</span></td>
+      <td style="font-weight:700">${p.name}</td>
+      <td>${p.item}</td>
+      <td>${p.designer||'—'}</td>
+      <td>${p.sale||'—'}</td>
+      <td class="cost-mono">${p.prints||'—'}</td>
+      <td class="cost-mono">${p.cost?'$'+parseFloat(p.cost).toFixed(2):'—'}</td>
+      <td class="cost-mono">${p.budget?p.budget+'萬':'—'}</td>
+      <td><div style="display:flex;flex-wrap:wrap;gap:3px">${pl.map(t=>`<span class="tag">${t}</span>`).join('')}${p.paper?`<span class="tag">${p.paper}${p.gsm?' '+p.gsm:''}</span>`:''}</div></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" style="color:var(--ink)" onclick="openDetail('${p.id}')">詳情</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--ink);margin-top:2px" onclick="openEditById('${p.id}')">編輯</button>
+      </td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:#aaa;font-size:0.95rem">無符合資料</td></tr>`;
+}
+
+function renderAnalytics() {
+  const data = DB_CACHE;
+  const pp=p=>parseInt((p.prints||'').replace(/[^0-9]/g,''))||0;
+  const wC=data.filter(p=>p.cost&&parseFloat(p.cost)>0);
+  const sorted=[...wC].sort((a,b)=>parseFloat(b.cost)-parseFloat(a.cost)).slice(0,10);
+  const maxC=sorted.length?parseFloat(sorted[0].cost):1;
+  document.getElementById('chart-cost').innerHTML=sorted.map(p=>`
+    <div class="bar-row">
+      <div class="bar-label" title="${p.name}">${p.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(parseFloat(p.cost)/maxC*100).toFixed(1)}%"></div></div>
+      <div class="bar-val">$${parseFloat(p.cost).toFixed(1)}</div>
+    </div>`).join('')||'<div style="color:#aaa">尚無成本資料</div>';
+  const sortedP=[...data].filter(p=>pp(p)>0).sort((a,b)=>pp(b)-pp(a)).slice(0,10);
+  const maxP=sortedP.length?pp(sortedP[0]):1;
+  document.getElementById('chart-prints').innerHTML=sortedP.map(p=>`
+    <div class="bar-row">
+      <div class="bar-label" title="${p.name}">${p.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(pp(p)/maxP*100).toFixed(1)}%;background:linear-gradient(90deg,var(--sage),#6a8c70)"></div></div>
+      <div class="bar-val">${pp(p).toLocaleString()}</div>
+    </div>`).join('')||'<div style="color:#aaa">尚無印製資料</div>';
+  const freq={};
+  data.forEach(p=>getProcessList(p.process).forEach(t=>{const k=t.split('（')[0];freq[k]=(freq[k]||0)+1;}));
+  document.getElementById('chart-materials').innerHTML=Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(([t,c])=>
+    `<div class="material-pill">${t}<span class="material-pill-count">${c}</span></div>`
+  ).join('')||'<div style="color:#aaa">尚無工藝資料</div>';
+}
+
+function renderAll(){renderDashboard();renderCards();renderTable();renderAnalytics();}
+
+// ══════ PROCESS CHECKBOXES ══════
+function buildProcessCheckboxes(curProc) {
+  const container=document.getElementById('process-checkboxes');
+  container.innerHTML='';
+  PROCESS_OPTIONS.forEach(opt=>{
+    const entry=curProc?curProc[opt.key]:null;
+    const isChecked=!!(entry&&entry.checked);
+    const subVal=(isChecked&&opt.sub&&entry.val)?entry.val:'';
+    const div=document.createElement('div');
+    div.className='pci'+(isChecked?' checked':'');
+    div.dataset.key=opt.key;
+    div.innerHTML=`
+      <input type="checkbox" id="pc-${opt.key}"${isChecked?' checked':''}>
+      <div class="pci-label">
+        <label for="pc-${opt.key}">${opt.label}</label>
+        ${opt.sub?`<input class="pci-sub" id="pcs-${opt.key}" placeholder="${opt.placeholder||''}" value="${subVal}">`:'' }
+      </div>`;
+    const cb=div.querySelector('input[type=checkbox]');
+    cb.addEventListener('change',()=>{
+      div.classList.toggle('checked',cb.checked);
+      if(opt.sub){const si=div.querySelector('.pci-sub');if(si)si.style.display=cb.checked?'block':'none';}
+    });
+    // init sub visibility
+    if(opt.sub){const si=div.querySelector('.pci-sub');if(si)si.style.display=isChecked?'block':'none';}
+    container.appendChild(div);
+  });
+}
+
+function readProcessFromForm() {
+  const result={};
+  PROCESS_OPTIONS.forEach(opt=>{
+    const cb=document.getElementById('pc-'+opt.key);
+    if(!cb||!cb.checked){return;}
+    if(opt.sub){const si=document.getElementById('pcs-'+opt.key);result[opt.key]={checked:true,val:si?si.value.trim():''};}
+    else{result[opt.key]={checked:true};}
+  });
+  return result;
+}
+
+// ══════ DETAIL ══════
+function openDetail(id) {
+  const p = DB_CACHE.find(x=>x.id===id);
+  if(!p)return;
+  currentDetailId=id;
+  document.getElementById('detail-title').textContent=p.name;
+  const pl=getProcessList(p.process);
+  document.getElementById('detail-body').innerHTML=`
+    ${p.image?`<div class="detail-section"><img class="detail-img" src="${p.image}" alt="${p.name}"></div>`:''}
+    <div class="detail-section">
+      <div class="detail-heading">基本資訊</div>
+      <div class="detail-grid">
+        <div class="detail-field"><label>品項</label><span>${p.item||'—'}</span></div>
+        <div class="detail-field"><label>年份</label><span>${p.year||'—'}</span></div>
+        <div class="detail-field"><label>執行設計</label><span>${p.designer||'—'}</span></div>
+        <div class="detail-field"><label>販售形式</label><span>${p.sale||'—'}</span></div>
+        <div class="detail-field"><label>販售金額</label><span>${p.price||'—'}</span></div>
+        <div class="detail-field"><label>狀態</label><span>${p.status||'—'}</span></div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-heading">成本資訊</div>
+      <div class="detail-grid">
+        <div class="detail-field"><label>總印製份數</label><span>${p.prints||'—'}</span></div>
+        <div class="detail-field"><label>單份成本</label><span style="color:var(--rust);font-family:'DM Mono',monospace;font-size:1.1rem">${p.cost?'$'+parseFloat(p.cost).toFixed(2):'—'}</span></div>
+        <div class="detail-field"><label>原設定預算</label><span>${p.budget?p.budget+'萬':'—'}</span></div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-heading">印刷材質</div>
+      <div class="detail-grid">
+        <div class="detail-field"><label>使用紙材</label><span>${p.paper||'—'}</span></div>
+        <div class="detail-field"><label>紙張磅數</label><span>${p.gsm||'—'}</span></div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-heading">後加工工藝</div>
+      <div class="process-tags">${pl.length?pl.map(t=>`<span class="tag highlight">${t}</span>`).join(''):'<span style="color:#aaa">無</span>'}</div>
+    </div>
+    ${p.notes?`<div class="detail-section"><div class="detail-heading">備註</div><p style="font-size:0.95rem;line-height:1.8;font-weight:500">${p.notes}</p></div>`:''}`;
+  openModal('detail-modal');
+}
+function editCurrentProject(){closeModal('detail-modal');openEditById(currentDetailId);}
+async function deleteCurrentProject(){
+  const p = DB_CACHE.find(x=>x.id===currentDetailId);
+  if(!p||!confirm(`確定要刪除「${p.name}」嗎？`))return;
+  try {
+    setLoadingState(true);
+    await dbDelete(currentDetailId);
+    DB_CACHE = DB_CACHE.filter(x=>x.id!==currentDetailId);
+    closeModal('detail-modal');
+    renderAll();
+    toast('✓ 已刪除專案');
+  } catch(e) {
+    toast('✗ 刪除失敗，請重試');
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+// ══════ IMAGE HANDLING ══════
+let currentImageBase64 = null;
+
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { toast('✗ 圖片超過 3MB，請壓縮後再上傳'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentImageBase64 = ev.target.result;
+    setImagePreview(currentImageBase64);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function setImagePreview(src) {
+  const area = document.getElementById('img-upload-area');
+  const wrap = document.getElementById('img-preview-wrap');
+  const actions = document.getElementById('img-actions');
+  if (src) {
+    wrap.innerHTML = `<img src="${src}" alt="示意圖" style="width:100%;max-height:200px;object-fit:contain;display:block;background:#f8f6f2">`;
+    area.classList.add('has-img');
+    actions.style.display = 'flex';
+  } else {
+    wrap.innerHTML = `<div class="img-upload-icon">🖼</div><div class="img-upload-hint">點擊上傳示意圖<span>支援 JPG、PNG、WEBP，建議寬度 800px 以上</span></div>`;
+    area.classList.remove('has-img');
+    actions.style.display = 'none';
+  }
+}
+
+function clearImage() {
+  currentImageBase64 = null;
+  setImagePreview(null);
+}
+
+// ══════ FORM ══════
+function openNewForm(){
+  document.getElementById('modal-title').textContent='新增專案';
+  ['id','name','year','item','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  document.getElementById('f-year').value=new Date().getFullYear();
+  document.getElementById('f-status').value='規劃中';
+  currentImageBase64 = null;
+  setImagePreview(null);
+  buildProcessCheckboxes(null);
+  openModal('form-modal');
+}
+function openEditById(id){
+  const p = DB_CACHE.find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('modal-title').textContent='編輯專案';
+  document.getElementById('f-id').value=p.id;
+  ['name','year','item','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{
+    const el=document.getElementById('f-'+f);if(el)el.value=p[f]||'';
+  });
+  document.getElementById('f-status').value=p.status||'規劃中';
+  currentImageBase64 = p.image || null;
+  setImagePreview(currentImageBase64);
+  buildProcessCheckboxes(p.process);
+  openModal('form-modal');
+}
+async function saveProject(){
+  const name=document.getElementById('f-name').value.trim();
+  const item=document.getElementById('f-item').value.trim();
+  const designer=document.getElementById('f-designer').value.trim();
+  if(!name){alert('品名為必填欄位');return;}
+  if(!item){alert('品項為必填欄位');return;}
+  if(!designer){alert('執行設計為必填欄位');return;}
+  const id=document.getElementById('f-id').value||uid();
+  const proj={
+    id,name,item,designer,
+    year:document.getElementById('f-year').value.trim(),
+    sale:document.getElementById('f-sale').value.trim(),
+    price:document.getElementById('f-price').value.trim(),
+    prints:document.getElementById('f-prints').value.trim(),
+    cost:document.getElementById('f-cost').value.trim(),
+    budget:document.getElementById('f-budget').value.trim(),
+    paper:document.getElementById('f-paper').value.trim(),
+    gsm:document.getElementById('f-gsm').value.trim(),
+    process:readProcessFromForm(),
+    notes:document.getElementById('f-notes').value.trim(),
+    status:document.getElementById('f-status').value,
+    image: currentImageBase64 || null,
+  };
+  try {
+    setLoadingState(true);
+    await dbUpsert(proj);
+    const idx = DB_CACHE.findIndex(p=>p.id===id);
+    if(idx>=0) DB_CACHE[idx]=proj; else DB_CACHE.push(proj);
+    closeModal('form-modal');
+    renderAll();
+    toast('✓ 專案已儲存並同步');
+  } catch(e) {
+    toast('✗ 儲存失敗，請重試');
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
+});
+
+// ══════ 密碼鎖 ══════
+const PASS = 'vieshow2026';
+const PASS_KEY = 'vsc_auth';
+
+function checkPassword() {
+  const val = document.getElementById('lock-input').value;
+  const errEl = document.getElementById('lock-error');
+  const inputEl = document.getElementById('lock-input');
+  if (val === PASS) {
+    sessionStorage.setItem(PASS_KEY, '1');
+    const ls = document.getElementById('lock-screen');
+    ls.style.opacity = '0';
+    ls.style.transition = 'opacity 0.4s ease';
+    setTimeout(() => ls.style.display = 'none', 400);
+    loadAndRender();
+  } else {
+    errEl.textContent = '密碼錯誤，請重試';
+    inputEl.value = '';
+    inputEl.classList.add('shake');
+    setTimeout(() => inputEl.classList.remove('shake'), 400);
+    inputEl.focus();
+  }
+}
+
+// 已登入則直接進入
+if (sessionStorage.getItem(PASS_KEY) === '1') {
+  document.getElementById('lock-screen').style.display = 'none';
+  loadAndRender();
+} else {
+  setTimeout(() => document.getElementById('lock-input').focus(), 100);
+}
+</script>
+</body>
+</html>

@@ -199,6 +199,76 @@
   .toast.show { display: block; }
   @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
+  /* ── Password Lock ── */
+  .lock-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    background-image:
+      radial-gradient(ellipse at 30% 60%, rgba(184,146,42,0.08) 0%, transparent 55%),
+      radial-gradient(ellipse at 75% 25%, rgba(184,146,42,0.05) 0%, transparent 50%);
+  }
+  .lock-box {
+    width: min(400px, 90vw);
+    text-align: center;
+    animation: slideUp 0.4s ease;
+  }
+  .lock-logo {
+    font-size: 1.6rem; font-weight: 900;
+    color: var(--gold-light); letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+  }
+  .lock-sub {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--mist); margin-bottom: 2.5rem;
+  }
+  .lock-label {
+    font-size: 0.8rem; font-weight: 600; color: var(--mist);
+    text-align: left; display: block; margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+  .lock-input {
+    width: 100%; padding: 0.75rem 1rem;
+    border: 1px solid rgba(196,184,154,0.25);
+    border-radius: 4px; background: rgba(255,255,255,0.06);
+    color: var(--paper); font-size: 1rem;
+    font-family: 'DM Mono', monospace; letter-spacing: 0.15em;
+    outline: none; transition: border-color 0.2s; margin-bottom: 1rem;
+    text-align: center;
+  }
+  .lock-input:focus { border-color: var(--gold); }
+  .lock-input.shake {
+    animation: shake 0.4s ease;
+    border-color: var(--rust) !important;
+  }
+  .lock-btn {
+    width: 100%; padding: 0.75rem;
+    background: var(--gold); color: var(--ink);
+    font-size: 0.95rem; font-weight: 700;
+    border: none; border-radius: 4px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .lock-btn:hover { background: var(--gold-light); }
+  .lock-error {
+    font-size: 0.82rem; color: var(--rust);
+    margin-top: 0.75rem; min-height: 1.2em;
+    font-weight: 500;
+  }
+  .lock-divider {
+    width: 40px; height: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    margin: 0 auto 2rem;
+    border-radius: 2px;
+  }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-6px)}
+    80%{transform:translateX(6px)}
+  }
+
   .year-badge { font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 500; padding: 0.2rem 0.5rem; background: var(--ink); color: var(--gold-light); border-radius: 2px; }
   .empty-state { text-align: center; padding: 4rem 2rem; color: #aaa; }
   .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
@@ -213,6 +283,20 @@
 </style>
 </head>
 <body>
+
+<!-- Lock Screen -->
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-logo">VieShow Craft</div>
+    <div class="lock-sub">專案管理系統</div>
+    <div class="lock-divider"></div>
+    <label class="lock-label">請輸入存取密碼</label>
+    <input class="lock-input" id="lock-input" type="password" placeholder="••••••••••"
+      onkeydown="if(event.key==='Enter')checkPassword()">
+    <button class="lock-btn" onclick="checkPassword()">進入系統</button>
+    <div class="lock-error" id="lock-error"></div>
+  </div>
+</div>
 
 <header>
   <div class="logo">
@@ -838,8 +922,37 @@ document.querySelectorAll('.modal-overlay').forEach(el=>{
   el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
 });
 
-// 啟動時從 Supabase 載入資料
-loadAndRender();
+// ══════ 密碼鎖 ══════
+const PASS = 'vieshow2026';
+const PASS_KEY = 'vsc_auth';
+
+function checkPassword() {
+  const val = document.getElementById('lock-input').value;
+  const errEl = document.getElementById('lock-error');
+  const inputEl = document.getElementById('lock-input');
+  if (val === PASS) {
+    sessionStorage.setItem(PASS_KEY, '1');
+    const ls = document.getElementById('lock-screen');
+    ls.style.opacity = '0';
+    ls.style.transition = 'opacity 0.4s ease';
+    setTimeout(() => ls.style.display = 'none', 400);
+    loadAndRender();
+  } else {
+    errEl.textContent = '密碼錯誤，請重試';
+    inputEl.value = '';
+    inputEl.classList.add('shake');
+    setTimeout(() => inputEl.classList.remove('shake'), 400);
+    inputEl.focus();
+  }
+}
+
+// 已登入則直接進入
+if (sessionStorage.getItem(PASS_KEY) === '1') {
+  document.getElementById('lock-screen').style.display = 'none';
+  loadAndRender();
+} else {
+  setTimeout(() => document.getElementById('lock-input').focus(), 100);
+}
 </script>
 </body>
 </html>

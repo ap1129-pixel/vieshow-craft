@@ -125,7 +125,7 @@
 
   /* Card thumbnail */
   .card-thumb { width: 100%; height: 160px; object-fit: cover; display: block; border-bottom: 1px solid var(--border); background: var(--cream); }
-  .card-thumb-placeholder { width: 100%; height: 100px; background: var(--cream); display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 2rem; border-bottom: 1px solid var(--border); }
+  .card-thumb-placeholder { width: 100%; height: 160px; background: var(--cream); display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 2rem; border-bottom: 1px solid var(--border); }
 
   /* Detail image */
   .detail-img { width: 100%; max-height: 320px; object-fit: contain; border-radius: 3px; border: 1px solid var(--border); background: #f8f6f2; display: block; }
@@ -269,9 +269,23 @@
     80%{transform:translateX(6px)}
   }
 
-  .year-badge { font-family: 'DM Mono', monospace; font-size: 0.68rem; font-weight: 500; padding: 0.2rem 0.5rem; background: var(--ink); color: var(--gold-light); border-radius: 2px; }
+  .year-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem; font-weight: 500;
+    padding: 0.35rem 0.5rem;
+    background: var(--ink); color: var(--gold-light);
+    border-radius: 3px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0px; line-height: 1.4; flex-shrink: 0;
+    text-align: center; min-width: 36px;
+  }
+  .year-badge .ybr { width: 18px; height: 1px; background: var(--gold); margin: 1px 0; }
   .empty-state { text-align: center; padding: 4rem 2rem; color: #aaa; }
   .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  .sort-btn { font-family: 'Noto Sans TC', sans-serif; font-size: 0.78rem; font-weight: 500; padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: 3px; background: white; color: #777; cursor: pointer; transition: all 0.15s; }
+  .sort-btn:hover { border-color: var(--gold); color: var(--ink); }
+  .sort-btn.active { background: var(--ink); color: var(--gold-light); border-color: var(--ink); }
 
   /* ── Hamburger ── */
   .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 0.4rem; flex-direction: column; gap: 5px; }
@@ -418,6 +432,11 @@
     <div class="view" id="view-cards">
       <div class="page-header">
         <div><div class="page-title">專案卡片</div><div class="page-sub">所有專案一覽</div></div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <span style="font-size:0.8rem;color:#888;font-weight:500">排序</span>
+          <button class="sort-btn active" id="sort-asc" onclick="setSort('asc')">舊 → 新</button>
+          <button class="sort-btn" id="sort-desc" onclick="setSort('desc')">新 → 舊</button>
+        </div>
       </div>
       <div class="projects-grid" id="all-cards"></div>
     </div>
@@ -527,8 +546,8 @@
           <input class="form-input" id="f-cost" placeholder="e.g. 44.97">
         </div>
         <div class="form-group">
-          <label class="form-label">原設定預算（萬）</label>
-          <input class="form-input" id="f-budget" placeholder="e.g. 15">
+          <label class="form-label">單份預算（元）</label>
+          <input class="form-input" id="f-budget" placeholder="e.g. 30">
         </div>
       </div>
 
@@ -552,7 +571,7 @@
         <div class="img-upload-area" id="img-upload-area" onclick="document.getElementById('f-image-file').click()">
           <div id="img-preview-wrap">
             <div class="img-upload-icon">🖼</div>
-            <div class="img-upload-hint">點擊上傳示意圖<span>支援 JPG、PNG、WEBP，建議寬度 800px 以上</span></div>
+            <div class="img-upload-hint">點擊上傳示意圖<span>建議上傳尺寸 寬800 x 高600px</span></div>
           </div>
         </div>
         <input type="file" id="f-image-file" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
@@ -717,7 +736,11 @@ function buildCard(p) {
   const pl = getProcessList(p.process);
   const tags = pl.slice(0,4).map(t=>`<span class="tag highlight">${t}</span>`).join('');
   const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor(p.status)};margin-right:5px;vertical-align:middle;"></span>`;
-  const dateBadge = p.year ? `${p.year}${p.month?' / '+p.month:''}` : '—';
+  const dateBadge = p.year
+    ? (p.month
+        ? `<span class="year-badge"><span>${p.year}</span><span class="ybr"></span><span>${p.month}</span></span>`
+        : `<span class="year-badge"><span>${p.year}</span></span>`)
+    : '';
   const thumbHtml = p.image
     ? `<img class="card-thumb" src="${p.image}" alt="${p.name}">`
     : `<div class="card-thumb-placeholder">◈</div>`;
@@ -725,9 +748,9 @@ function buildCard(p) {
     ${thumbHtml}
     <div class="card-accent"></div>
     <div class="card-body">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.2rem">
-        <div class="card-title">${p.name}</div>
-        <span class="year-badge">${dateBadge}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;margin-bottom:0.2rem">
+        <div class="card-title" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
+        ${dateBadge}
       </div>
       <div class="card-type">${p.item}</div>
       <div class="card-meta">
@@ -745,7 +768,7 @@ function buildCard(p) {
         <div class="cost-label">單份成本</div>
         <div class="cost-val">${hasCost?'$'+parseFloat(p.cost).toFixed(2):'—'}</div>
       </div>
-      ${p.budget?`<span class="tag">預算 ${p.budget}萬</span>`:''}
+      ${p.budget?`<div class="cost-display" style="text-align:right"><div class="cost-label">單份預算</div><div class="cost-val" style="color:var(--sage)">$${p.budget}</div></div>`:''}
     </div>
   </div>`;
 }
@@ -769,8 +792,25 @@ function renderDashboard() {
   document.getElementById('dash-recent').innerHTML=recent.map(buildCard).join('')||`<div class="empty-state"><div class="empty-state-icon">◈</div><p>尚無專案</p></div>`;
 }
 
+let cardSortOrder = 'asc';
+
+function setSort(order) {
+  cardSortOrder = order;
+  document.getElementById('sort-asc').classList.toggle('active', order==='asc');
+  document.getElementById('sort-desc').classList.toggle('active', order==='desc');
+  renderCards();
+}
+
+function sortByDate(data, order) {
+  return [...data].sort((a, b) => {
+    const ka = `${a.year||'0000'}${a.month||'00'}`;
+    const kb = `${b.year||'0000'}${b.month||'00'}`;
+    return order === 'asc' ? ka.localeCompare(kb) : kb.localeCompare(ka);
+  });
+}
+
 function renderCards() {
-  const data = DB_CACHE;
+  const data = sortByDate(DB_CACHE, cardSortOrder);
   document.getElementById('all-cards').innerHTML=data.length?data.map(buildCard).join(''):`<div class="empty-state"><div class="empty-state-icon">◈</div><p>尚無專案，請新增</p></div>`;
 }
 
@@ -781,14 +821,14 @@ function renderTable() {
   document.getElementById('table-body').innerHTML=filtered.map(p=>{
     const pl=getProcessList(p.process);
     return `<tr>
-      <td><span class="year-badge">${p.year||'—'}${p.month?' / '+p.month:''}</span></td>
+      <td>${p.year?`<span class="year-badge" style="display:inline-flex">${p.year}${p.month?`<span class="ybr" style="width:100%"></span>${p.month}`:''}</span>`:'—'}</td>
       <td style="font-weight:700">${p.name}</td>
       <td>${p.item}</td>
       <td>${p.designer||'—'}</td>
       <td>${p.sale||'—'}</td>
       <td class="cost-mono">${p.prints||'—'}</td>
       <td class="cost-mono">${p.cost?'$'+parseFloat(p.cost).toFixed(2):'—'}</td>
-      <td class="cost-mono">${p.budget?p.budget+'萬':'—'}</td>
+      <td class="cost-mono">${p.budget?'$'+p.budget:'—'}</td>
       <td><div style="display:flex;flex-wrap:wrap;gap:3px">${pl.map(t=>`<span class="tag">${t}</span>`).join('')}${p.paper?`<span class="tag">${p.paper}${p.gsm?' '+p.gsm:''}</span>`:''}</div></td>
       <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" style="color:var(--ink)" onclick="openDetail('${p.id}')">詳情</button>
@@ -891,7 +931,7 @@ function openDetail(id) {
       <div class="detail-grid">
         <div class="detail-field"><label>總印製份數</label><span>${p.prints||'—'}</span></div>
         <div class="detail-field"><label>單份成本</label><span style="color:var(--rust);font-family:'DM Mono',monospace;font-size:1.1rem">${p.cost?'$'+parseFloat(p.cost).toFixed(2):'—'}</span></div>
-        <div class="detail-field"><label>原設定預算</label><span>${p.budget?p.budget+'萬':'—'}</span></div>
+        <div class="detail-field"><label>單份預算</label><span>${p.budget?'$'+p.budget:'—'}</span></div>
       </div>
     </div>
     <div class="detail-section">
@@ -951,7 +991,7 @@ function setImagePreview(src) {
     area.classList.add('has-img');
     actions.style.display = 'flex';
   } else {
-    wrap.innerHTML = `<div class="img-upload-icon">🖼</div><div class="img-upload-hint">點擊上傳示意圖<span>支援 JPG、PNG、WEBP，建議寬度 800px 以上</span></div>`;
+    wrap.innerHTML = `<div class="img-upload-icon">🖼</div><div class="img-upload-hint">點擊上傳示意圖<span>建議上傳尺寸 寬800 x 高600px</span></div>`;
     area.classList.remove('has-img');
     actions.style.display = 'none';
   }

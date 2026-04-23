@@ -470,8 +470,25 @@
           <input class="form-input" id="f-name" placeholder="e.g. 魔法公主">
         </div>
         <div class="form-group">
-          <label class="form-label">年份</label>
-          <input class="form-input" id="f-year" placeholder="e.g. 2026">
+          <label class="form-label">年份 / 月份</label>
+          <div style="display:flex;gap:0.5rem">
+            <input class="form-input" id="f-year" placeholder="2026" style="flex:1;min-width:0">
+            <select class="form-select" id="f-month" style="flex:1;min-width:0">
+              <option value="">月份</option>
+              <option value="01">01月</option>
+              <option value="02">02月</option>
+              <option value="03">03月</option>
+              <option value="04">04月</option>
+              <option value="05">05月</option>
+              <option value="06">06月</option>
+              <option value="07">07月</option>
+              <option value="08">08月</option>
+              <option value="09">09月</option>
+              <option value="10">10月</option>
+              <option value="11">11月</option>
+              <option value="12">12月</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">品項 <span class="req">*</span></label>
@@ -700,6 +717,7 @@ function buildCard(p) {
   const pl = getProcessList(p.process);
   const tags = pl.slice(0,4).map(t=>`<span class="tag highlight">${t}</span>`).join('');
   const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor(p.status)};margin-right:5px;vertical-align:middle;"></span>`;
+  const dateBadge = p.year ? `${p.year}${p.month?' / '+p.month:''}` : '—';
   const thumbHtml = p.image
     ? `<img class="card-thumb" src="${p.image}" alt="${p.name}">`
     : `<div class="card-thumb-placeholder">◈</div>`;
@@ -709,7 +727,7 @@ function buildCard(p) {
     <div class="card-body">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.2rem">
         <div class="card-title">${p.name}</div>
-        <span class="year-badge">${p.year||'—'}</span>
+        <span class="year-badge">${dateBadge}</span>
       </div>
       <div class="card-type">${p.item}</div>
       <div class="card-meta">
@@ -763,7 +781,7 @@ function renderTable() {
   document.getElementById('table-body').innerHTML=filtered.map(p=>{
     const pl=getProcessList(p.process);
     return `<tr>
-      <td><span class="year-badge">${p.year||'—'}</span></td>
+      <td><span class="year-badge">${p.year||'—'}${p.month?' / '+p.month:''}</span></td>
       <td style="font-weight:700">${p.name}</td>
       <td>${p.item}</td>
       <td>${p.designer||'—'}</td>
@@ -861,7 +879,7 @@ function openDetail(id) {
       <div class="detail-heading">基本資訊</div>
       <div class="detail-grid">
         <div class="detail-field"><label>品項</label><span>${p.item||'—'}</span></div>
-        <div class="detail-field"><label>年份</label><span>${p.year||'—'}</span></div>
+        <div class="detail-field"><label>年份 / 月份</label><span>${p.year||'—'}${p.month?' / '+p.month+'月':''}</span></div>
         <div class="detail-field"><label>執行設計</label><span>${p.designer||'—'}</span></div>
         <div class="detail-field"><label>販售形式</label><span>${p.sale||'—'}</span></div>
         <div class="detail-field"><label>販售金額</label><span>${p.price||'—'}</span></div>
@@ -949,6 +967,7 @@ function openNewForm(){
   document.getElementById('modal-title').textContent='新增專案';
   ['id','name','year','item','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
   document.getElementById('f-year').value=new Date().getFullYear();
+  document.getElementById('f-month').value=String(new Date().getMonth()+1).padStart(2,'0');
   document.getElementById('f-status').value='規劃中';
   currentImageBase64 = null;
   setImagePreview(null);
@@ -964,7 +983,7 @@ function openEditById(id){
     const el=document.getElementById('f-'+f);if(el)el.value=p[f]||'';
   });
   document.getElementById('f-status').value=p.status||'規劃中';
-  currentImageBase64 = p.image || null;
+  document.getElementById('f-month').value=p.month||'';
   setImagePreview(currentImageBase64);
   buildProcessCheckboxes(p.process);
   openModal('form-modal');
@@ -980,6 +999,7 @@ async function saveProject(){
   const proj={
     id,name,item,designer,
     year:document.getElementById('f-year').value.trim(),
+    month:document.getElementById('f-month').value,
     sale:document.getElementById('f-sale').value.trim(),
     price:document.getElementById('f-price').value.trim(),
     prints:document.getElementById('f-prints').value.trim(),

@@ -984,6 +984,7 @@ function openEditById(id){
   });
   document.getElementById('f-status').value=p.status||'規劃中';
   document.getElementById('f-month').value=p.month||'';
+  currentImageBase64 = p.image || null;
   setImagePreview(currentImageBase64);
   buildProcessCheckboxes(p.process);
   openModal('form-modal');

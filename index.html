@@ -124,11 +124,11 @@
   .img-actions button { flex: 1; font-size: 0.78rem; padding: 0.35rem 0; }
 
   /* Card thumbnail */
-  .card-thumb { width: 100%; height: 160px; object-fit: cover; display: block; border-bottom: 1px solid var(--border); background: var(--cream); }
+  .card-thumb { width: 100%; height: 160px; object-fit: cover; object-position: center top; display: block; border-bottom: 1px solid var(--border); background: var(--cream); }
   .card-thumb-placeholder { width: 100%; height: 160px; background: var(--cream); display: flex; align-items: center; justify-content: center; color: var(--border); font-size: 2rem; border-bottom: 1px solid var(--border); }
 
   /* Detail image */
-  .detail-img { width: 100%; max-height: 320px; object-fit: contain; border-radius: 3px; border: 1px solid var(--border); background: #f8f6f2; display: block; }
+  .detail-img { width: 100%; height: 280px; object-fit: cover; border-radius: 3px; border: 1px solid var(--border); display: block; }
 
   .table-controls { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; }
   .search-box { flex: 1; padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: 3px; font-family: 'Noto Sans TC', sans-serif; font-size: 0.95rem; background: white; color: var(--ink); outline: none; }
@@ -445,6 +445,11 @@
     <div class="view" id="view-table">
       <div class="page-header">
         <div><div class="page-title">列表檢視</div><div class="page-sub">完整資料表格</div></div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <span style="font-size:0.8rem;color:#888;font-weight:500">排序</span>
+          <button class="sort-btn active" id="table-sort-asc" onclick="setTableSort('asc')">舊 → 新</button>
+          <button class="sort-btn" id="table-sort-desc" onclick="setTableSort('desc')">新 → 舊</button>
+        </div>
       </div>
       <div class="table-controls">
         <input class="search-box" id="table-search" placeholder="搜尋品名、品項、執行設計、販售形式…" oninput="renderTable()">
@@ -814,8 +819,17 @@ function renderCards() {
   document.getElementById('all-cards').innerHTML=data.length?data.map(buildCard).join(''):`<div class="empty-state"><div class="empty-state-icon">◈</div><p>尚無專案，請新增</p></div>`;
 }
 
+let tableSortOrder = 'asc';
+
+function setTableSort(order) {
+  tableSortOrder = order;
+  document.getElementById('table-sort-asc').classList.toggle('active', order==='asc');
+  document.getElementById('table-sort-desc').classList.toggle('active', order==='desc');
+  renderTable();
+}
+
 function renderTable() {
-  const data = DB_CACHE;
+  const data = sortByDate(DB_CACHE, tableSortOrder);
   const q=(document.getElementById('table-search')?.value||'').toLowerCase();
   const filtered=q?data.filter(p=>[p.name,p.item,p.sale,p.paper,p.designer,...getProcessList(p.process)].join(' ').toLowerCase().includes(q)):data;
   document.getElementById('table-body').innerHTML=filtered.map(p=>{

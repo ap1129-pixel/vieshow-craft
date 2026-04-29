@@ -576,7 +576,7 @@
         <div class="img-upload-area" id="img-upload-area" onclick="document.getElementById('f-image-file').click()">
           <div id="img-preview-wrap">
             <div class="img-upload-icon">🖼</div>
-            <div class="img-upload-hint">點擊上傳示意圖<span>建議上傳尺寸 寬800 x 高600px</span></div>
+            <div class="img-upload-hint">點擊上傳示意圖<span>建議上傳尺寸 寬800 x 高400px</span></div>
           </div>
         </div>
         <input type="file" id="f-image-file" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
@@ -1005,7 +1005,7 @@ function setImagePreview(src) {
     area.classList.add('has-img');
     actions.style.display = 'flex';
   } else {
-    wrap.innerHTML = `<div class="img-upload-icon">🖼</div><div class="img-upload-hint">點擊上傳示意圖<span>建議上傳尺寸 寬800 x 高600px</span></div>`;
+    wrap.innerHTML = `<div class="img-upload-icon">🖼</div><div class="img-upload-hint">點擊上傳示意圖<span>建議上傳尺寸 寬800 x 高400px</span></div>`;
     area.classList.remove('has-img');
     actions.style.display = 'none';
   }

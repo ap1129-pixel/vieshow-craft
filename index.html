@@ -667,9 +667,10 @@ async function dbDelete(id) {
 // ══════ 後加工工藝（固定順序）══════
 const PROCESS_OPTIONS = [
   { key:'fogP',      label:'霧P',       sub:false },
+  { key:'glossP',    label:'亮P',       sub:false },
   { key:'mold',      label:'上模',       sub:false },
   { key:'spotGloss', label:'局部上光',   sub:false },
-  { key:'spotMatte', label:'局部磨砂',   sub:false },
+  { key:'spotMatte', label:'局部磨砂',   sub:true, placeholder:'', subType:'select', subOptions:['中砂','粗砂'] },
   { key:'foil',      label:'燙金',       sub:true, placeholder:'顏色，e.g. 碎藍、紅' },
   { key:'emboss',    label:'打凸',       sub:false },
   { key:'deboss',    label:'打凹',       sub:false },
@@ -921,19 +922,30 @@ function buildProcessCheckboxes(curProc) {
     const div=document.createElement('div');
     div.className='pci'+(isChecked?' checked':'');
     div.dataset.key=opt.key;
+
+    let subHtml = '';
+    if (opt.sub) {
+      if (opt.subType === 'select') {
+        subHtml = `<select class="pci-sub" id="pcs-${opt.key}" style="display:${isChecked?'block':'none'}">
+          <option value="">請選擇</option>
+          ${opt.subOptions.map(o=>`<option value="${o}"${subVal===o?' selected':''}>${o}</option>`).join('')}
+        </select>`;
+      } else {
+        subHtml = `<input class="pci-sub" id="pcs-${opt.key}" placeholder="${opt.placeholder||''}" value="${subVal}" style="display:${isChecked?'block':'none'}">`;
+      }
+    }
+
     div.innerHTML=`
       <input type="checkbox" id="pc-${opt.key}"${isChecked?' checked':''}>
       <div class="pci-label">
         <label for="pc-${opt.key}">${opt.label}</label>
-        ${opt.sub?`<input class="pci-sub" id="pcs-${opt.key}" placeholder="${opt.placeholder||''}" value="${subVal}">`:'' }
+        ${subHtml}
       </div>`;
     const cb=div.querySelector('input[type=checkbox]');
     cb.addEventListener('change',()=>{
       div.classList.toggle('checked',cb.checked);
       if(opt.sub){const si=div.querySelector('.pci-sub');if(si)si.style.display=cb.checked?'block':'none';}
     });
-    // init sub visibility
-    if(opt.sub){const si=div.querySelector('.pci-sub');if(si)si.style.display=isChecked?'block':'none';}
     container.appendChild(div);
   });
 }

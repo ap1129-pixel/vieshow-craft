@@ -670,7 +670,7 @@ const PROCESS_OPTIONS = [
   { key:'glossP',    label:'亮P',       sub:false },
   { key:'mold',      label:'上模',       sub:false },
   { key:'spotGloss', label:'局部上光',   sub:false },
-  { key:'spotMatte', label:'局部磨砂',   sub:true, placeholder:'', subType:'select', subOptions:['中砂','粗砂'] },
+  { key:'spotMatte', label:'局部磨砂',   sub:true, placeholder:'', subType:'select', subOptions:['細砂','中砂'] },
   { key:'foil',      label:'燙金',       sub:true, placeholder:'顏色，e.g. 碎藍、紅' },
   { key:'emboss',    label:'打凸',       sub:false },
   { key:'deboss',    label:'打凹',       sub:false },
@@ -751,16 +751,33 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function statusColor(s){ return s==='已完成'?'var(--sage)':s==='進行中'?'var(--gold)':'var(--rust)'; }
 
+// 年份顏色對應（自動輪替）
+const YEAR_COLORS = [
+  { bg:'#2c3e2f', text:'#8fbc8f', line:'#6aaa6a' }, // 墨綠
+  { bg:'#1a1510', text:'#d4aa4a', line:'#b8922a' }, // 金色（原色）
+  { bg:'#3a1a2a', text:'#c97aaa', line:'#a85888' }, // 玫瑰紫
+  { bg:'#1a2a3a', text:'#7aaad4', line:'#4a88b8' }, // 靛藍
+  { bg:'#2a1a10', text:'#d4946a', line:'#b87248' }, // 磚橙
+  { bg:'#1a2a2a', text:'#6abcbc', line:'#3a9898' }, // 青綠
+];
+function yearColor(year) {
+  if (!year) return YEAR_COLORS[1];
+  const years = [...new Set(DB_CACHE.map(p=>p.year).filter(Boolean))].sort();
+  const idx = years.indexOf(year);
+  return YEAR_COLORS[idx >= 0 ? idx % YEAR_COLORS.length : 1];
+}
+
 // ══════ RENDER ══════
 function buildCard(p) {
   const hasCost = p.cost && parseFloat(p.cost)>0;
   const pl = getProcessList(p.process);
   const tags = pl.slice(0,4).map(t=>`<span class="tag highlight">${t}</span>`).join('');
   const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor(p.status)};margin-right:5px;vertical-align:middle;"></span>`;
+  const yc = yearColor(p.year);
   const dateBadge = p.year
     ? (p.month
-        ? `<span class="year-badge"><span>${p.year}</span><span class="ybr"></span><span>${p.month}</span></span>`
-        : `<span class="year-badge"><span>${p.year}</span></span>`)
+        ? `<span class="year-badge" style="background:${yc.bg};color:${yc.text}"><span>${p.year}</span><span class="ybr" style="background:${yc.line}"></span><span>${p.month}</span></span>`
+        : `<span class="year-badge" style="background:${yc.bg};color:${yc.text}"><span>${p.year}</span></span>`)
     : '';
   const thumbHtml = p.image
     ? `<img class="card-thumb" src="${p.image}" alt="${p.name}">`
@@ -853,7 +870,7 @@ function renderTable() {
   document.getElementById('table-body').innerHTML=filtered.map(p=>{
     const pl=getProcessList(p.process);
     return `<tr>
-      <td>${p.year?`<span class="year-badge" style="display:inline-flex">${p.year}${p.month?`<span class="ybr" style="width:100%"></span>${p.month}`:''}</span>`:'—'}</td>
+      <td>${p.year?`<span class="year-badge" style="display:inline-flex;background:${yearColor(p.year).bg};color:${yearColor(p.year).text}">${p.year}${p.month?`<span class="ybr" style="background:${yearColor(p.year).line};width:100%"></span>${p.month}`:''}</span>`:'—'}</td>
       <td style="font-weight:700">${p.name}</td>
       <td>${p.item}</td>
       <td>${p.designer||'—'}</td>

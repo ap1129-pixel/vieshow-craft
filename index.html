@@ -116,12 +116,59 @@
   }
   .img-upload-area:hover { border-color: var(--gold); background: rgba(184,146,42,0.04); }
   .img-upload-area.has-img { border-style: solid; border-color: var(--gold); padding: 0; overflow: hidden; }
-  .img-upload-area img { width: 100%; max-height: 200px; object-fit: contain; display: block; background: #f8f6f2; }
+  .img-upload-area img { width: 100%; max-height: 200px; object-fit: cover; display: block; background: #e0e0e0; }
   .img-upload-hint { font-size: 0.85rem; color: #aaa; font-weight: 500; }
   .img-upload-hint span { display: block; font-size: 0.72rem; margin-top: 0.3rem; color: #bbb; }
   .img-upload-icon { font-size: 2rem; margin-bottom: 0.5rem; color: var(--border); }
   .img-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
   .img-actions button { flex: 1; font-size: 0.78rem; padding: 0.35rem 0; }
+
+  /* ── Crop Modal ── */
+  .crop-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(10,8,6,0.88);
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(3px);
+  }
+  .crop-overlay.open { display: flex; }
+  .crop-box {
+    background: #1a1510;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: min(700px, 96vw);
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+    animation: slideUp 0.25s ease;
+  }
+  .crop-header {
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid rgba(196,184,154,0.2);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .crop-header-title { color: var(--gold-light); font-weight: 700; font-size: 0.95rem; }
+  .crop-header-hint { color: var(--mist); font-size: 0.75rem; }
+  .crop-canvas-wrap {
+    position: relative;
+    width: 100%; height: 380px;
+    background: #111;
+    overflow: hidden; cursor: crosshair;
+    user-select: none;
+  }
+  #crop-canvas { display: block; width: 100%; height: 100%; }
+  .crop-footer {
+    padding: 0.85rem 1.4rem;
+    border-top: 1px solid rgba(196,184,154,0.2);
+    display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+  }
+  .crop-info { color: var(--mist); font-family: 'DM Mono', monospace; font-size: 0.72rem; }
+  .crop-footer-btns { display: flex; gap: 0.6rem; }
+  .crop-btn { font-family: 'Noto Sans TC', sans-serif; font-size: 0.82rem; font-weight: 500; padding: 0.5rem 1.1rem; border: none; border-radius: 3px; cursor: pointer; transition: all 0.2s; }
+  .crop-btn-cancel { background: rgba(255,255,255,0.08); color: var(--mist); }
+  .crop-btn-cancel:hover { background: rgba(255,255,255,0.14); }
+  .crop-btn-reset { background: rgba(255,255,255,0.08); color: var(--mist); }
+  .crop-btn-reset:hover { background: rgba(255,255,255,0.14); }
+  .crop-btn-apply { background: var(--gold); color: var(--ink); font-weight: 700; }
+  .crop-btn-apply:hover { background: var(--gold-light); }
 
   /* Card thumbnail */
   .card-thumb { width: 100%; height: 160px; object-fit: cover; object-position: center top; display: block; border-bottom: 1px solid var(--border); background: var(--cream); }
@@ -404,7 +451,7 @@
       <div class="nav-item active" onclick="switchView('dashboard',this)"><span class="nav-icon">◈</span> 總覽</div>
       <div class="nav-item" onclick="switchView('cards',this)"><span class="nav-icon">▦</span> 專案卡片</div>
       <div class="nav-item" onclick="switchView('table',this)"><span class="nav-icon">≡</span> 列表檢視</div>
-      <div class="nav-item" onclick="switchView('analytics',this)"><span class="nav-icon">◎</span> 成本分析</div>
+      <div class="nav-item" onclick="switchView('analytics',this)"><span class="nav-icon">◎</span> 專案分析</div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">統計</div>
@@ -478,7 +525,7 @@
     <!-- Analytics -->
     <div class="view" id="view-analytics">
       <div class="page-header">
-        <div><div class="page-title">成本分析</div><div class="page-sub">工藝與費用統計</div></div>
+        <div><div class="page-title">專案分析</div><div class="page-sub">成本 · 工藝 · 製作者統計</div></div>
         <select class="year-filter-select" id="analytics-year-filter" onchange="renderAnalytics()">
           <option value="">全部年份</option>
         </select>
@@ -486,7 +533,10 @@
       <div class="analytics-grid">
         <div class="chart-card"><div class="chart-title">各專案單份成本排名</div><div class="bar-chart" id="chart-cost"></div></div>
         <div class="chart-card"><div class="chart-title">各專案印製份數</div><div class="bar-chart" id="chart-prints"></div></div>
-        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">後加工工藝使用頻率</div><div class="material-list" id="chart-materials"></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">後加工工藝使用頻率</div><div class="bar-chart" id="chart-materials"></div></div>
+        <div class="chart-card"><div class="chart-title">執行設計 · 專案數量</div><div class="bar-chart" id="chart-designer-count"></div></div>
+        <div class="chart-card"><div class="chart-title">執行設計 · 平均單份成本</div><div class="bar-chart" id="chart-designer-cost"></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">年度專案量比較</div><div class="bar-chart" id="chart-yearly"></div></div>
       </div>
     </div>
   </main>
@@ -630,6 +680,27 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Crop Modal -->
+<div class="crop-overlay" id="crop-overlay">
+  <div class="crop-box">
+    <div class="crop-header">
+      <span class="crop-header-title">裁切示意圖</span>
+      <span class="crop-header-hint">拖曳移動裁切框 · 拉角調整大小</span>
+    </div>
+    <div class="crop-canvas-wrap" id="crop-wrap">
+      <canvas id="crop-canvas"></canvas>
+    </div>
+    <div class="crop-footer">
+      <span class="crop-info" id="crop-info">裁切區域：800 × 400 px</span>
+      <div class="crop-footer-btns">
+        <button class="crop-btn crop-btn-cancel" onclick="closeCrop()">取消</button>
+        <button class="crop-btn crop-btn-reset" onclick="resetCrop()">重置</button>
+        <button class="crop-btn crop-btn-apply" onclick="applyCrop()">✓ 套用裁切</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ══════ SUPABASE 設定 ══════
@@ -892,6 +963,8 @@ function renderAnalytics() {
   const data = DB_CACHE.filter(p => !yr || p.year === yr);
   const pp=p=>parseInt((p.prints||'').replace(/[^0-9]/g,''))||0;
   const wC=data.filter(p=>p.cost&&parseFloat(p.cost)>0);
+
+  // ── 單份成本排名 ──
   const sorted=[...wC].sort((a,b)=>parseFloat(b.cost)-parseFloat(a.cost)).slice(0,10);
   const maxC=sorted.length?parseFloat(sorted[0].cost):1;
   document.getElementById('chart-cost').innerHTML=sorted.map(p=>`
@@ -900,6 +973,8 @@ function renderAnalytics() {
       <div class="bar-track"><div class="bar-fill" style="width:${(parseFloat(p.cost)/maxC*100).toFixed(1)}%"></div></div>
       <div class="bar-val">$${parseFloat(p.cost).toFixed(1)}</div>
     </div>`).join('')||'<div style="color:#aaa">尚無成本資料</div>';
+
+  // ── 印製份數 ──
   const sortedP=[...data].filter(p=>pp(p)>0).sort((a,b)=>pp(b)-pp(a)).slice(0,10);
   const maxP=sortedP.length?pp(sortedP[0]):1;
   document.getElementById('chart-prints').innerHTML=sortedP.map(p=>`
@@ -908,11 +983,60 @@ function renderAnalytics() {
       <div class="bar-track"><div class="bar-fill" style="width:${(pp(p)/maxP*100).toFixed(1)}%;background:linear-gradient(90deg,var(--sage),#6a8c70)"></div></div>
       <div class="bar-val">${pp(p).toLocaleString()}</div>
     </div>`).join('')||'<div style="color:#aaa">尚無印製資料</div>';
+
+  // ── 後加工工藝（條狀）──
   const freq={};
   data.forEach(p=>getProcessList(p.process).forEach(t=>{const k=t.split('（')[0];freq[k]=(freq[k]||0)+1;}));
-  document.getElementById('chart-materials').innerHTML=Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(([t,c])=>
-    `<div class="material-pill">${t}<span class="material-pill-count">${c}</span></div>`
-  ).join('')||'<div style="color:#aaa">尚無工藝資料</div>';
+  const freqSorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+  const maxF=freqSorted.length?freqSorted[0][1]:1;
+  document.getElementById('chart-materials').innerHTML=freqSorted.map(([t,c])=>`
+    <div class="bar-row">
+      <div class="bar-label">${t}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(c/maxF*100).toFixed(1)}%;background:linear-gradient(90deg,#7a5e10,var(--gold-light))"></div></div>
+      <div class="bar-val">${c} 次</div>
+    </div>`).join('')||'<div style="color:#aaa">尚無工藝資料</div>';
+
+  // ── 執行設計 · 專案數量 ──
+  const dCount={};
+  data.forEach(p=>{ if(p.designer) dCount[p.designer]=(dCount[p.designer]||0)+1; });
+  const dCountSorted=Object.entries(dCount).sort((a,b)=>b[1]-a[1]);
+  const maxDC=dCountSorted.length?dCountSorted[0][1]:1;
+  document.getElementById('chart-designer-count').innerHTML=dCountSorted.map(([d,c])=>`
+    <div class="bar-row">
+      <div class="bar-label">${d}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(c/maxDC*100).toFixed(1)}%;background:linear-gradient(90deg,#3a2a5a,#8a6aaa)"></div></div>
+      <div class="bar-val">${c} 件</div>
+    </div>`).join('')||'<div style="color:#aaa">尚無資料</div>';
+
+  // ── 執行設計 · 平均單份成本 ──
+  const dCost={};
+  data.filter(p=>p.designer&&p.cost&&parseFloat(p.cost)>0).forEach(p=>{
+    if(!dCost[p.designer]) dCost[p.designer]={sum:0,count:0};
+    dCost[p.designer].sum+=parseFloat(p.cost);
+    dCost[p.designer].count++;
+  });
+  const dCostSorted=Object.entries(dCost).map(([d,v])=>([d,(v.sum/v.count)])).sort((a,b)=>b[1]-a[1]);
+  const maxDCost=dCostSorted.length?dCostSorted[0][1]:1;
+  document.getElementById('chart-designer-cost').innerHTML=dCostSorted.map(([d,avg])=>`
+    <div class="bar-row">
+      <div class="bar-label">${d}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(avg/maxDCost*100).toFixed(1)}%;background:linear-gradient(90deg,var(--rust),#d4604a)"></div></div>
+      <div class="bar-val">$${avg.toFixed(1)}</div>
+    </div>`).join('')||'<div style="color:#aaa">尚無資料</div>';
+
+  // ── 年度專案量（使用全部資料，不受年份篩選影響）──
+  const yCount={};
+  DB_CACHE.forEach(p=>{ if(p.year) yCount[p.year]=(yCount[p.year]||0)+1; });
+  const ySorted=Object.entries(yCount).sort((a,b)=>a[0].localeCompare(b[0]));
+  const maxY=ySorted.length?ySorted.reduce((m,e)=>e[1]>m?e[1]:m,0):1;
+  document.getElementById('chart-yearly').innerHTML=ySorted.map(([y,c])=>{
+    const yc=yearColor(y);
+    return `<div class="bar-row">
+      <div class="bar-label" style="font-weight:700">${y}年</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(c/maxY*100).toFixed(1)}%;background:linear-gradient(90deg,${yc.bg === '#1a1510' ? 'var(--gold)' : yc.text},${yc.line})"></div></div>
+      <div class="bar-val">${c} 件</div>
+    </div>`;
+  }).join('')||'<div style="color:#aaa">尚無資料</div>';
 }
 
 function populateYearFilters() {
@@ -1038,21 +1162,200 @@ async function deleteCurrentProject(){
   }
 }
 
-// ══════ IMAGE HANDLING ══════
+// ══════ IMAGE & CROP ══════
 let currentImageBase64 = null;
+let cropState = { img: null, x:0, y:0, w:0, h:0, dragging:false, resizing:false, handle:'', startX:0, startY:0, startCrop:null };
+const CROP_RATIO = 800/400; // 2:1
 
 function handleImageUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 3 * 1024 * 1024) { toast('✗ 圖片超過 3MB，請壓縮後再上傳'); return; }
+  if (file.size > 5 * 1024 * 1024) { toast('✗ 圖片超過 5MB，請壓縮後再上傳'); return; }
   const reader = new FileReader();
-  reader.onload = ev => {
-    currentImageBase64 = ev.target.result;
-    setImagePreview(currentImageBase64);
-  };
+  reader.onload = ev => openCrop(ev.target.result);
   reader.readAsDataURL(file);
   e.target.value = '';
 }
+
+function openCrop(src) {
+  const img = new Image();
+  img.onload = () => {
+    cropState.img = img;
+    document.getElementById('crop-overlay').classList.add('open');
+    setTimeout(() => { initCropCanvas(); resetCrop(); }, 50);
+  };
+  img.src = src;
+}
+
+function initCropCanvas() {
+  const wrap = document.getElementById('crop-wrap');
+  const canvas = document.getElementById('crop-canvas');
+  canvas.width = wrap.offsetWidth;
+  canvas.height = wrap.offsetHeight;
+}
+
+function resetCrop() {
+  const canvas = document.getElementById('crop-canvas');
+  const img = cropState.img;
+  if (!img) return;
+  const cw = canvas.width, ch = canvas.height;
+  // fit image in canvas
+  const scale = Math.min(cw / img.width, ch / img.height);
+  const iw = img.width * scale, ih = img.height * scale;
+  const ix = (cw - iw) / 2, iy = (ch - ih) / 2;
+  cropState.imgX = ix; cropState.imgY = iy;
+  cropState.imgW = iw; cropState.imgH = ih;
+  cropState.scale = scale;
+  // default crop = center, 4:1 ratio, 80% of image width
+  const cropW = Math.min(iw * 0.9, ch * CROP_RATIO * 0.9);
+  const cropH = cropW / CROP_RATIO;
+  cropState.x = ix + (iw - cropW) / 2;
+  cropState.y = iy + (ih - cropH) / 2;
+  cropState.w = cropW;
+  cropState.h = cropH;
+  drawCrop();
+}
+
+function drawCrop() {
+  const canvas = document.getElementById('crop-canvas');
+  const ctx = canvas.getContext('2d');
+  const { img, imgX, imgY, imgW, imgH, x, y, w, h } = cropState;
+  const cw = canvas.width, ch = canvas.height;
+  ctx.clearRect(0, 0, cw, ch);
+  // draw image
+  ctx.drawImage(img, imgX, imgY, imgW, imgH);
+  // darken outside
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, cw, ch);
+  // cut out crop area (show original)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.drawImage(img, imgX, imgY, imgW, imgH);
+  ctx.restore();
+  // crop border
+  ctx.strokeStyle = 'rgba(212,170,74,0.9)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  // grid lines
+  ctx.strokeStyle = 'rgba(212,170,74,0.35)';
+  ctx.lineWidth = 1;
+  for (let i=1; i<3; i++) {
+    ctx.beginPath(); ctx.moveTo(x + w*i/3, y); ctx.lineTo(x + w*i/3, y+h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y + h*i/3); ctx.lineTo(x+w, y + h*i/3); ctx.stroke();
+  }
+  // handles
+  const handles = getHandles();
+  ctx.fillStyle = 'var(--gold-light, #d4aa4a)';
+  handles.forEach(hd => {
+    ctx.beginPath();
+    ctx.arc(hd.hx, hd.hy, 6, 0, Math.PI*2);
+    ctx.fillStyle = '#d4aa4a';
+    ctx.fill();
+  });
+  // info
+  const realW = Math.round(cropState.w / cropState.scale);
+  const realH = Math.round(cropState.h / cropState.scale);
+  document.getElementById('crop-info').textContent = `裁切區域：${realW} × ${realH} px`;
+}
+
+function getHandles() {
+  const {x,y,w,h} = cropState;
+  return [
+    {id:'nw', hx:x,     hy:y    }, {id:'n',  hx:x+w/2, hy:y    }, {id:'ne', hx:x+w,   hy:y    },
+    {id:'w',  hx:x,     hy:y+h/2}, {id:'e',  hx:x+w,   hy:y+h/2},
+    {id:'sw', hx:x,     hy:y+h  }, {id:'s',  hx:x+w/2, hy:y+h  }, {id:'se', hx:x+w,   hy:y+h  },
+  ];
+}
+
+function hitHandle(mx, my) {
+  return getHandles().find(hd => Math.hypot(mx-hd.hx, my-hd.hy) < 10);
+}
+
+function setupCropEvents() {
+  const canvas = document.getElementById('crop-canvas');
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return { mx: touch.clientX - r.left, my: touch.clientY - r.top };
+  }
+  function onDown(e) {
+    e.preventDefault();
+    const {mx,my} = getPos(e);
+    const hd = hitHandle(mx, my);
+    if (hd) {
+      cropState.resizing = true; cropState.handle = hd.id;
+    } else if (mx>cropState.x && mx<cropState.x+cropState.w && my>cropState.y && my<cropState.y+cropState.h) {
+      cropState.dragging = true;
+    } else return;
+    cropState.startX = mx; cropState.startY = my;
+    cropState.startCrop = {x:cropState.x,y:cropState.y,w:cropState.w,h:cropState.h};
+  }
+  function onMove(e) {
+    e.preventDefault();
+    const {mx,my} = getPos(e);
+    if (!cropState.dragging && !cropState.resizing) {
+      canvas.style.cursor = hitHandle(mx,my) ? 'nwse-resize' :
+        (mx>cropState.x && mx<cropState.x+cropState.w && my>cropState.y && my<cropState.y+cropState.h ? 'move' : 'crosshair');
+      return;
+    }
+    const dx = mx - cropState.startX, dy = my - cropState.startY;
+    const sc = cropState.startCrop;
+    const {imgX,imgY,imgW,imgH} = cropState;
+    if (cropState.dragging) {
+      cropState.x = Math.max(imgX, Math.min(imgX+imgW-sc.w, sc.x+dx));
+      cropState.y = Math.max(imgY, Math.min(imgY+imgH-sc.h, sc.y+dy));
+    } else {
+      let nx=sc.x, ny=sc.y, nw=sc.w, nh=sc.h;
+      const h = cropState.handle;
+      if (h.includes('e')) nw = Math.max(80, sc.w+dx);
+      if (h.includes('s')) nh = Math.max(40, sc.h+dy);
+      if (h.includes('w')) { nw = Math.max(80, sc.w-dx); nx = sc.x+sc.w-nw; }
+      if (h.includes('n')) { nh = Math.max(40, sc.h-dy); ny = sc.y+sc.h-nh; }
+      // maintain ratio
+      if (h==='se'||h==='e'||h==='s') { nh = nw/CROP_RATIO; }
+      else if (h==='nw'||h==='n'||h==='w') { nh = nw/CROP_RATIO; if(h.includes('n')) ny=sc.y+sc.h-nh; }
+      else if (h==='ne') { nh=nw/CROP_RATIO; ny=sc.y+sc.h-nh; }
+      else if (h==='sw') { nh=nw/CROP_RATIO; }
+      // clamp
+      nx = Math.max(imgX, nx); ny = Math.max(imgY, ny);
+      nw = Math.min(nw, imgX+imgW-nx); nh = nw/CROP_RATIO;
+      if (ny+nh > imgY+imgH) { nh=imgY+imgH-ny; nw=nh*CROP_RATIO; }
+      cropState.x=nx; cropState.y=ny; cropState.w=nw; cropState.h=nh;
+    }
+    drawCrop();
+  }
+  function onUp() { cropState.dragging=false; cropState.resizing=false; }
+  canvas.addEventListener('mousedown', onDown);
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseup', onUp);
+  canvas.addEventListener('touchstart', onDown, {passive:false});
+  canvas.addEventListener('touchmove', onMove, {passive:false});
+  canvas.addEventListener('touchend', onUp);
+}
+
+function applyCrop() {
+  const {img, x, y, w, h, imgX, imgY, scale} = cropState;
+  const out = document.createElement('canvas');
+  out.width = 800; out.height = 400;
+  const ctx = out.getContext('2d');
+  const srcX = (x - imgX) / scale;
+  const srcY = (y - imgY) / scale;
+  const srcW = w / scale;
+  const srcH = h / scale;
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, 800, 400);
+  currentImageBase64 = out.toDataURL('image/jpeg', 0.9);
+  setImagePreview(currentImageBase64);
+  closeCrop();
+  toast('✓ 裁切完成');
+}
+
+function closeCrop() {
+  document.getElementById('crop-overlay').classList.remove('open');
+}
+
+// init crop events once
 
 function setImagePreview(src) {
   const area = document.getElementById('img-upload-area');
@@ -1143,6 +1446,8 @@ async function saveProject(){
 document.querySelectorAll('.modal-overlay').forEach(el=>{
   el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
 });
+
+setupCropEvents();
 
 // ══════ 密碼鎖 ══════
 const PASS = 'vieshow2026';

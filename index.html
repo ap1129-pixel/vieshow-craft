@@ -475,6 +475,10 @@
       <div class="stat-pill"><span class="stat-pill-label">平均單份成本</span><span class="stat-pill-val" id="sb-avgcost">—</span></div>
       <div class="stat-pill"><span class="stat-pill-label">總印製份數</span><span class="stat-pill-val" id="sb-prints">—</span></div>
     </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">品項統計</div>
+      <div id="sb-items-list"></div>
+    </div>
   </aside>
 
   <main>
@@ -915,6 +919,32 @@ function renderDashboard() {
   const avg=wC.length?(wC.reduce((s,p)=>s+parseFloat(p.cost),0)/wC.length).toFixed(1):'—';
   document.getElementById('sb-avgcost').textContent=avg!=='—'?'$'+avg:'—';
   document.getElementById('sb-prints').textContent=data.reduce((s,p)=>s+pp(p),0).toLocaleString();
+
+  // 品項統計
+  const itemTotals = {};
+  data.forEach(p => {
+    if (!p.items || !p.items.length) return;
+    p.items.forEach(it => {
+      const key = it.label;
+      if (!itemTotals[key]) itemTotals[key] = { qty:0, unit:it.unit, actualQty:0 };
+      itemTotals[key].qty += it.qty || 0;
+      if (it.note && parseInt(it.note)) {
+        itemTotals[key].actualQty += (it.qty||0) * parseInt(it.note);
+      }
+    });
+  });
+  const sbItems = document.getElementById('sb-items-list');
+  if (Object.keys(itemTotals).length) {
+    sbItems.innerHTML = Object.entries(itemTotals).map(([label, stat]) => {
+      const sub = stat.actualQty ? `<span style="font-size:0.68rem;color:#aaa;display:block">實際 ${stat.actualQty} 張</span>` : '';
+      return `<div class="stat-pill" style="flex-direction:column;align-items:flex-start;gap:0.1rem">
+        <span class="stat-pill-label">${label}</span>
+        <span class="stat-pill-val">${stat.qty} ${stat.unit} ${sub}</span>
+      </div>`;
+    }).join('');
+  } else {
+    sbItems.innerHTML = `<div style="font-size:0.78rem;color:#aaa;padding:0.4rem 0.2rem">編輯專案以更新品項資料</div>`;
+  }
   const recent=[...data].slice(-4).reverse();
   document.getElementById('dash-recent').innerHTML=recent.map(buildCard).join('')||`<div class="empty-state"><div class="empty-state-icon">◈</div><p>尚無專案</p></div>`;
 }

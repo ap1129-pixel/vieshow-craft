@@ -209,6 +209,22 @@
   .form-textarea { resize: vertical; min-height: 80px; }
   .section-divider { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin: 1.25rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
 
+  /* ── Item Rows ── */
+  .item-row { display:flex; align-items:center; gap:0.5rem; background:white; border:1px solid var(--border); border-radius:3px; padding:0.5rem 0.65rem; flex-wrap:wrap; }
+  .item-row select, .item-row input { border:none; outline:none; background:transparent; font-family:'Noto Sans TC',sans-serif; font-size:0.88rem; color:var(--ink); }
+  .item-row select { font-weight:600; cursor:pointer; flex-shrink:0; }
+  .item-qty-wrap { display:flex; align-items:center; gap:0; border:1px solid var(--border); border-radius:3px; overflow:hidden; flex-shrink:0; }
+  .item-qty-btn { width:28px; height:28px; border:none; background:var(--cream); color:var(--ink); font-size:1rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s; flex-shrink:0; line-height:1; }
+  .item-qty-btn:hover { background:var(--border); }
+  .item-qty { width:40px; text-align:center; font-weight:700; font-size:0.9rem; border:none!important; padding:0.1rem 0; background:white; }
+  .item-unit { font-size:0.82rem; color:#888; flex-shrink:0; font-weight:500; }
+  .item-note-input { flex:1; font-size:0.8rem; color:#777; border:none!important; border-bottom:1px dashed #ddd!important; padding:0.1rem 0.25rem; min-width:80px; background:transparent; }
+  .item-note-label { font-size:0.75rem; color:#aaa; flex-shrink:0; }
+  .item-del { background:none; border:none; cursor:pointer; color:#ccc; font-size:1.1rem; padding:0 0.2rem; line-height:1; flex-shrink:0; margin-left:auto; }
+  .item-del:hover { color:var(--rust); }
+  .item-divider { width:1px; height:18px; background:var(--border); flex-shrink:0; }
+  .item-tag { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; font-weight:500; padding:0.2rem 0.5rem; background:var(--cream); border:1px solid var(--border); border-radius:2px; }
+
   /* Process checkboxes */
   .process-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 0.5rem; }
   .pci { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.55rem 0.65rem; border: 1px solid var(--border); border-radius: 3px; background: white; cursor: pointer; transition: all 0.15s; }
@@ -536,6 +552,7 @@
         <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">後加工工藝使用頻率</div><div class="bar-chart" id="chart-materials"></div></div>
         <div class="chart-card"><div class="chart-title">執行設計 · 專案數量</div><div class="bar-chart" id="chart-designer-count"></div></div>
         <div class="chart-card"><div class="chart-title">執行設計 · 平均單份成本</div><div class="bar-chart" id="chart-designer-cost"></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">品項類型 · 總張數／組數統計</div><div class="bar-chart" id="chart-items"></div></div>
         <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">年度專案量比較</div><div class="bar-chart" id="chart-yearly"></div></div>
       </div>
     </div>
@@ -579,9 +596,10 @@
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">品項 <span class="req">*</span></label>
-          <input class="form-input" id="f-item" placeholder="e.g. A3海報*2">
+        <div class="form-group full">
+          <label class="form-label">品項清單 <span class="req">*</span></label>
+          <div id="item-list" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.5rem"></div>
+          <button type="button" class="btn btn-ghost" style="color:var(--ink);font-size:0.82rem;padding:0.4rem 0.9rem;align-self:flex-start" onclick="addItemRow()">＋ 新增品項</button>
         </div>
         <div class="form-group">
           <label class="form-label">執行設計 <span class="req">*</span></label>
@@ -1024,7 +1042,32 @@ function renderAnalytics() {
       <div class="bar-val">$${avg.toFixed(1)}</div>
     </div>`).join('')||'<div style="color:#aaa">尚無資料</div>';
 
-  // ── 年度專案量（使用全部資料，不受年份篩選影響）──
+  // ── 品項類型統計 ──
+  const itemStats = {};
+  data.forEach(p => {
+    if (!p.items || !p.items.length) return;
+    p.items.forEach(it => {
+      if (!itemStats[it.label]) itemStats[it.label] = { qty:0, projects:0, unit:it.unit };
+      itemStats[it.label].qty += it.qty || 0;
+      // 明信片：若有每組張數，換算實際張數
+      if (it.note && parseInt(it.note)) {
+        itemStats[it.label].actualQty = (itemStats[it.label].actualQty||0) + (it.qty||0) * parseInt(it.note);
+      }
+      itemStats[it.label].projects++;
+    });
+  });
+  const itemSorted = Object.entries(itemStats).sort((a,b)=>b[1].qty-a[1].qty);
+  const maxI = itemSorted.length ? itemSorted[0][1].qty : 1;
+  document.getElementById('chart-items').innerHTML = itemSorted.map(([label, stat])=>{
+    const sub = stat.actualQty ? `<span style="font-size:0.68rem;color:#999;margin-left:4px">（實際 ${stat.actualQty} 張）</span>` : '';
+    return `<div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(stat.qty/maxI*100).toFixed(1)}%;background:linear-gradient(90deg,#2a3a4a,#5a8aaa)"></div></div>
+      <div class="bar-val" style="width:auto;min-width:65px">${stat.qty} ${stat.unit} ${sub}（${stat.projects} 專案）</div>
+    </div>`;
+  }).join('') || '<div style="color:#aaa">尚無品項資料（請編輯專案更新品項）</div>';
+
+  // ── 年度專案量 ──
   const yCount={};
   DB_CACHE.forEach(p=>{ if(p.year) yCount[p.year]=(yCount[p.year]||0)+1; });
   const ySorted=Object.entries(yCount).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -1051,6 +1094,104 @@ function populateYearFilters() {
 }
 
 function renderAll(){populateYearFilters();renderDashboard();renderCards();renderTable();renderAnalytics();}
+
+// ══════ 品項清單 ══════
+const ITEM_TYPES = [
+  { value:'poster_a3', label:'A3 海報', unit:'張', hasNote:false },
+  { value:'postcard',  label:'明信片',  unit:'組', hasNote:true, notePlaceholder:'每組幾張，e.g. 10' },
+  { value:'other',     label:'其他',    unit:'',   hasNote:true, notePlaceholder:'單位 e.g. 張/冊/個', unitEditable:true },
+];
+
+function addItemRow(data={}) {
+  const list = document.getElementById('item-list');
+  const id = 'ir-' + Date.now() + Math.random().toString(36).slice(2,5);
+  const type = data.type || 'poster_a3';
+  const def = ITEM_TYPES.find(t=>t.value===type) || ITEM_TYPES[0];
+
+  const row = document.createElement('div');
+  row.className = 'item-row';
+  row.id = id;
+  row.innerHTML = buildItemRowHTML(type, data.qty||'', data.note||'', data.unit||def.unit);
+  list.appendChild(row);
+  updateItemRowEvents(row);
+}
+
+function buildItemRowHTML(type, qty, note, unit) {
+  const def = ITEM_TYPES.find(t=>t.value===type) || ITEM_TYPES[0];
+  const opts = ITEM_TYPES.map(t=>`<option value="${t.value}"${t.value===type?' selected':''}>${t.label}</option>`).join('');
+  const qtyVal = qty || 1;
+  const unitHtml = def.unitEditable
+    ? `<input class="item-note-input" style="width:50px" placeholder="單位" value="${unit||''}">`
+    : `<span class="item-unit">${def.unit}</span>`;
+  const noteHtml = def.hasNote
+    ? `<span class="item-divider"></span><span class="item-note-label">${def.notePlaceholder||'備註'}：</span><input class="item-note-input" placeholder="e.g. 10" value="${note||''}">`
+    : '';
+  return `
+    <select onchange="onItemTypeChange(this)">${opts}</select>
+    <span class="item-divider"></span>
+    <div class="item-qty-wrap">
+      <button type="button" class="item-qty-btn" onclick="changeQty(this,-1)">−</button>
+      <input class="item-qty" type="number" min="1" value="${qtyVal}">
+      <button type="button" class="item-qty-btn" onclick="changeQty(this,1)">＋</button>
+    </div>
+    ${unitHtml}
+    ${noteHtml}
+    <button type="button" class="item-del" onclick="removeItemRow(this)" title="刪除">×</button>`;
+}
+
+function changeQty(btn, delta) {
+  const input = btn.closest('.item-qty-wrap').querySelector('.item-qty');
+  input.value = Math.max(1, (parseInt(input.value)||1) + delta);
+}
+
+function onItemTypeChange(sel) {
+  const row = sel.closest('.item-row');
+  const type = sel.value;
+  const qty = row.querySelector('.item-qty')?.value || '';
+  row.innerHTML = buildItemRowHTML(type, qty, '', '');
+  updateItemRowEvents(row);
+}
+
+function updateItemRowEvents(row) {
+  // nothing extra needed, inline handlers work
+}
+
+function removeItemRow(btn) {
+  btn.closest('.item-row').remove();
+}
+
+function readItemsFromForm() {
+  const rows = document.querySelectorAll('#item-list .item-row');
+  return Array.from(rows).map(row => {
+    const type = row.querySelector('select')?.value || 'poster_a3';
+    const def = ITEM_TYPES.find(t=>t.value===type) || ITEM_TYPES[0];
+    const qty = parseInt(row.querySelector('.item-qty')?.value) || 0;
+    const noteInputs = row.querySelectorAll('.item-note-input');
+    let unit = def.unit;
+    let note = '';
+    if (def.unitEditable) {
+      unit = noteInputs[0]?.value || '';
+    } else if (def.hasNote) {
+      note = noteInputs[0]?.value || '';
+    }
+    return { type, label: def.label, qty, unit, note };
+  }).filter(i => i.qty > 0);
+}
+
+function buildItemsFromSaved(items) {
+  document.getElementById('item-list').innerHTML = '';
+  if (!items || !items.length) { addItemRow(); return; }
+  items.forEach(item => addItemRow(item));
+}
+
+function itemsToDisplayString(items) {
+  if (!items || !items.length) return '—';
+  return items.map(i => {
+    let s = `${i.label} × ${i.qty}${i.unit}`;
+    if (i.note) s += `（${i.note}張/組）`;
+    return s;
+  }).join('、');
+}
 
 // ══════ PROCESS CHECKBOXES ══════
 function buildProcessCheckboxes(curProc) {
@@ -1114,7 +1255,15 @@ function openDetail(id) {
     <div class="detail-section">
       <div class="detail-heading">基本資訊</div>
       <div class="detail-grid">
-        <div class="detail-field"><label>品項</label><span>${p.item||'—'}</span></div>
+        <div class="detail-field"><label>品項</label>
+          <div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.2rem">
+            ${(p.items&&p.items.length)?p.items.map(i=>{
+              let s=`${i.label} × ${i.qty}${i.unit}`;
+              if(i.note) s+=`（${i.note}張/組）`;
+              return `<span class="item-tag">📦 ${s}</span>`;
+            }).join(''):`<span>${p.item||'—'}</span>`}
+          </div>
+        </div>
         <div class="detail-field"><label>年份 / 月份</label><span>${p.year||'—'}${p.month?' / '+p.month+'月':''}</span></div>
         <div class="detail-field"><label>執行設計</label><span>${p.designer||'—'}</span></div>
         <div class="detail-field"><label>販售形式</label><span>${p.sale||'—'}</span></div>
@@ -1382,10 +1531,11 @@ function clearImage() {
 // ══════ FORM ══════
 function openNewForm(){
   document.getElementById('modal-title').textContent='新增專案';
-  ['id','name','year','item','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  ['id','name','year','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
   document.getElementById('f-year').value=new Date().getFullYear();
   document.getElementById('f-month').value=String(new Date().getMonth()+1).padStart(2,'0');
   document.getElementById('f-status').value='規劃中';
+  buildItemsFromSaved([]);
   currentImageBase64 = null;
   setImagePreview(null);
   buildProcessCheckboxes(null);
@@ -1396,11 +1546,12 @@ function openEditById(id){
   if(!p)return;
   document.getElementById('modal-title').textContent='編輯專案';
   document.getElementById('f-id').value=p.id;
-  ['name','year','item','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{
+  ['name','year','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{
     const el=document.getElementById('f-'+f);if(el)el.value=p[f]||'';
   });
   document.getElementById('f-status').value=p.status||'規劃中';
   document.getElementById('f-month').value=p.month||'';
+  buildItemsFromSaved(p.items||[]);
   currentImageBase64 = p.image || null;
   setImagePreview(currentImageBase64);
   buildProcessCheckboxes(p.process);
@@ -1408,14 +1559,16 @@ function openEditById(id){
 }
 async function saveProject(){
   const name=document.getElementById('f-name').value.trim();
-  const item=document.getElementById('f-item').value.trim();
   const designer=document.getElementById('f-designer').value.trim();
+  const items=readItemsFromForm();
   if(!name){alert('品名為必填欄位');return;}
-  if(!item){alert('品項為必填欄位');return;}
   if(!designer){alert('執行設計為必填欄位');return;}
+  if(!items.length){alert('請至少新增一個品項');return;}
   const id=document.getElementById('f-id').value||uid();
   const proj={
-    id,name,item,designer,
+    id,name,designer,
+    items,
+    item: itemsToDisplayString(items),
     year:document.getElementById('f-year').value.trim(),
     month:document.getElementById('f-month').value,
     sale:document.getElementById('f-sale').value.trim(),
@@ -1439,7 +1592,8 @@ async function saveProject(){
     renderAll();
     toast('✓ 專案已儲存並同步');
   } catch(e) {
-    toast('✗ 儲存失敗，請重試');
+    console.error('儲存失敗：', e);
+    toast('✗ 儲存失敗：' + (e.message||'請先執行 Supabase SQL 新增 items 欄位'));
   } finally {
     setLoadingState(false);
   }

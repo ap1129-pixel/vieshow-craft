@@ -1329,10 +1329,12 @@ function setupCropEvents() {
   function onUp() { cropState.dragging=false; cropState.resizing=false; }
   canvas.addEventListener('mousedown', onDown);
   canvas.addEventListener('mousemove', onMove);
-  canvas.addEventListener('mouseup', onUp);
+  // 綁在 document 確保拖出 canvas 範圍不會中斷
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
   canvas.addEventListener('touchstart', onDown, {passive:false});
-  canvas.addEventListener('touchmove', onMove, {passive:false});
-  canvas.addEventListener('touchend', onUp);
+  document.addEventListener('touchmove', onMove, {passive:false});
+  document.addEventListener('touchend', onUp);
 }
 
 function applyCrop() {
@@ -1444,6 +1446,8 @@ async function saveProject(){
 }
 
 document.querySelectorAll('.modal-overlay').forEach(el=>{
+  // 只有非表單的 modal 才允許點外面關閉，form-modal 不關閉避免誤觸
+  if(el.id === 'form-modal') return;
   el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
 });
 

@@ -1664,6 +1664,7 @@ function checkPassword() {
     ls.style.transition = 'opacity 0.4s ease';
     setTimeout(() => ls.style.display = 'none', 400);
     loadAndRender();
+    initKeepAlive();
   } else {
     errEl.textContent = '密碼錯誤，請重試';
     inputEl.value = '';
@@ -1677,8 +1678,28 @@ function checkPassword() {
 if (sessionStorage.getItem(PASS_KEY) === '1') {
   document.getElementById('lock-screen').style.display = 'none';
   loadAndRender();
+  initKeepAlive();
 } else {
   setTimeout(() => document.getElementById('lock-input').focus(), 100);
+}
+
+// ══════ SUPABASE KEEP-ALIVE ══════
+const KEEPALIVE_KEY = 'vsc_keepalive';
+async function keepAlive() {
+  try {
+    await sbFetch(`${API}?limit=1`);
+    localStorage.setItem(KEEPALIVE_KEY, Date.now().toString());
+    console.log('Supabase keep-alive ping 成功');
+  } catch(e) {}
+}
+function initKeepAlive() {
+  const fourDays = 4 * 24 * 60 * 60 * 1000;
+  const check = () => {
+    const last = parseInt(localStorage.getItem(KEEPALIVE_KEY) || '0');
+    if (Date.now() - last > fourDays) keepAlive();
+  };
+  check();
+  setInterval(check, 12 * 60 * 60 * 1000); // 每 12 小時檢查
 }
 </script>
 </body>

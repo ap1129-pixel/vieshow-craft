@@ -507,8 +507,8 @@
           </select>
           <div style="display:flex;align-items:center;gap:0.5rem">
             <span style="font-size:0.8rem;color:#888;font-weight:500">排序</span>
-            <button class="sort-btn active" id="sort-asc" onclick="setSort('asc')">舊 → 新</button>
-            <button class="sort-btn" id="sort-desc" onclick="setSort('desc')">新 → 舊</button>
+            <button class="sort-btn" id="sort-asc" onclick="setSort('asc')">舊 → 新</button>
+            <button class="sort-btn active" id="sort-desc" onclick="setSort('desc')">新 → 舊</button>
           </div>
         </div>
       </div>
@@ -949,7 +949,7 @@ function renderDashboard() {
   document.getElementById('dash-recent').innerHTML=recent.map(buildCard).join('')||`<div class="empty-state"><div class="empty-state-icon">◈</div><p>尚無專案</p></div>`;
 }
 
-let cardSortOrder = 'asc';
+let cardSortOrder = 'desc';
 
 function setSort(order) {
   cardSortOrder = order;
@@ -1114,12 +1114,15 @@ function renderAnalytics() {
 
 function populateYearFilters() {
   const years = [...new Set(DB_CACHE.map(p=>p.year).filter(Boolean))].sort();
+  const latestYear = years[years.length - 1] || '';
   ['cards-year-filter','table-year-filter','analytics-year-filter'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
     const current = sel.value;
+    // 卡片頁預設選最新年份，其他維持原選擇
+    const defaultVal = id === 'cards-year-filter' && !current ? latestYear : current;
     sel.innerHTML = '<option value="">全部年份</option>' +
-      years.map(y => `<option value="${y}"${y===current?' selected':''}>${y}年</option>`).join('');
+      years.map(y => `<option value="${y}"${y===defaultVal?' selected':''}>${y}年</option>`).join('');
   });
 }
 

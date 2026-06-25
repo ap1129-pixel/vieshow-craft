@@ -2,27 +2,45 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    - cron: '0 9 */3 * *'  # 改成每 3 天，更保險
+    - cron: '0 9 */2 * *'
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase (with retry)
+      - name: Write and delete keepalive record
         run: |
           for i in 1 2 3 4 5; do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://zbbwueukfcaqsexexgrn.supabase.co/rest/v1/projects?limit=1" \
+            echo "嘗試 $i..."
+
+            INSERT=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST \
+              "https://zbbwueukfcaqsexexgrn.supabase.co/rest/v1/projects" \
               -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnd1ZXVrZmNhcXNleGV4Z3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDUxNjMsImV4cCI6MjA5MjQyMTE2M30.Tru7YL4vQmfeWp1hAbyQceBrXLT4DaoE94tcmZ678_c" \
               -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnd1ZXVrZmNhcXNleGV4Z3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDUxNjMsImV4cCI6MjA5MjQyMTE2M30.Tru7YL4vQmfeWp1hAbyQceBrXLT4DaoE94tcmZ678_c" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: return=representation" \
+              -d '{"id":"__keepalive__","name":"keepalive","item":"keepalive","designer":"system"}' \
               || echo "000")
-            echo "嘗試 $i：HTTP $CODE"
-            if [ "$CODE" = "200" ] || [ "$CODE" = "206" ]; then
-              echo "✅ Ping 成功"
+
+            echo "INSERT HTTP: $INSERT"
+
+            if [ "$INSERT" = "201" ] || [ "$INSERT" = "200" ]; then
+              echo "寫入成功，刪除記錄..."
+
+              curl -s -o /dev/null \
+                -X DELETE \
+                "https://zbbwueukfcaqsexexgrn.supabase.co/rest/v1/projects?id=eq.__keepalive__" \
+                -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnd1ZXVrZmNhcXNleGV4Z3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDUxNjMsImV4cCI6MjA5MjQyMTE2M30.Tru7YL4vQmfeWp1hAbyQceBrXLT4DaoE94tcmZ678_c" \
+                -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYnd1ZXVrZmNhcXNleGV4Z3JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDUxNjMsImV4cCI6MjA5MjQyMTE2M30.Tru7YL4vQmfeWp1hAbyQceBrXLT4DaoE94tcmZ678_c"
+
+              echo "Keep-alive 完成！"
               exit 0
             fi
-            sleep 10
+
+            sleep 15
           done
-          echo "⚠️ 5 次都失敗，但不中斷（可能是暫時網路問題）"
+
+          echo "5 次都失敗，等下次排程"
           exit 0

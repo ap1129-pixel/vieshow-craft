@@ -209,6 +209,17 @@
   .form-textarea { resize: vertical; min-height: 80px; }
   .section-divider { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin: 1.25rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
 
+  /* ── Star Rating ── */
+  .star-rating { display:flex; gap:0.4rem; }
+  .star { font-size:2rem; cursor:pointer; color:#ddd; transition:color 0.15s; user-select:none; }
+  .star.active { color: var(--gold); }
+  .star:hover { color: var(--gold-light); }
+
+  /* Card star display */
+  .card-stars { display:flex; gap:2px; font-size:0.9rem; }
+  .card-stars .s { color:#ddd; }
+  .card-stars .s.on { color:var(--gold); }
+
   /* ── Item Rows ── */
   .item-row { display:flex; align-items:center; gap:0.5rem; background:white; border:1px solid var(--border); border-radius:3px; padding:0.5rem 0.65rem; flex-wrap:wrap; }
   .item-row select, .item-row input { border:none; outline:none; background:transparent; font-family:'Noto Sans TC',sans-serif; font-size:0.88rem; color:var(--ink); }
@@ -607,7 +618,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">執行設計 <span class="req">*</span></label>
-          <input class="form-input" id="f-designer" placeholder="e.g. 王小明">
+          <input class="form-input" id="f-designer" placeholder="e.g. 郭小光、京珍、竹子、予禛">
         </div>
         <div class="form-group">
           <label class="form-label">販售形式</label>
@@ -632,6 +643,10 @@
         <div class="form-group">
           <label class="form-label">總印製份數</label>
           <input class="form-input" id="f-prints" placeholder="e.g. 8108（套）">
+        </div>
+        <div class="form-group">
+          <label class="form-label">實際銷售套數</label>
+          <input class="form-input" id="f-sold" placeholder="e.g. 3200">
         </div>
         <div class="form-group">
           <label class="form-label">單份成本（元）</label>
@@ -671,6 +686,19 @@
           <button class="btn btn-ghost" onclick="document.getElementById('f-image-file').click()" style="color:var(--ink)">更換圖片</button>
           <button class="btn btn-danger" onclick="clearImage()">移除圖片</button>
         </div>
+      </div>
+
+      <div class="section-divider">專案執行評分</div>
+      <div class="form-group full">
+        <label class="form-label" style="margin-bottom:0.5rem">執行價值評估</label>
+        <div class="star-rating" id="f-rating">
+          <span class="star" data-val="1" onclick="setRating(1)">★</span>
+          <span class="star" data-val="2" onclick="setRating(2)">★</span>
+          <span class="star" data-val="3" onclick="setRating(3)">★</span>
+          <span class="star" data-val="4" onclick="setRating(4)">★</span>
+          <span class="star" data-val="5" onclick="setRating(5)">★</span>
+        </div>
+        <input type="hidden" id="f-rating-val" value="0">
       </div>
 
       <div class="section-divider">備註</div>
@@ -899,9 +927,32 @@ function buildCard(p) {
         <div class="cost-label">單份成本</div>
         <div class="cost-val">${hasCost?'$'+parseFloat(p.cost).toFixed(2):'—'}</div>
       </div>
-      ${p.budget?`<div class="cost-display" style="text-align:right"><div class="cost-label">單份預算</div><div class="cost-val" style="color:var(--sage)">$${p.budget}</div></div>`:''}
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.2rem">
+        ${p.budget?`<div class="cost-display" style="text-align:right"><div class="cost-label">單份預算</div><div class="cost-val" style="color:var(--sage)">$${p.budget}</div></div>`:''}
+        ${p.rating?starsHTML(p.rating):''}
+      </div>
     </div>
   </div>`;
+}
+
+// ══════ 五星評分 ══════
+function setRating(val) {
+  document.getElementById('f-rating-val').value = val;
+  document.querySelectorAll('#f-rating .star').forEach((s,i) => {
+    s.classList.toggle('active', i < val);
+  });
+}
+function loadRating(val) {
+  const v = parseInt(val) || 0;
+  document.getElementById('f-rating-val').value = v;
+  document.querySelectorAll('#f-rating .star').forEach((s,i) => {
+    s.classList.toggle('active', i < v);
+  });
+}
+function starsHTML(val) {
+  const v = parseInt(val) || 0;
+  if (!v) return '';
+  return `<div class="card-stars">${[1,2,3,4,5].map(i=>`<span class="s${i<=v?' on':''}">★</span>`).join('')}</div>`;
 }
 
 function renderDashboard() {
@@ -1308,8 +1359,10 @@ function openDetail(id) {
       <div class="detail-heading">成本資訊</div>
       <div class="detail-grid">
         <div class="detail-field"><label>總印製份數</label><span>${p.prints||'—'}</span></div>
+        <div class="detail-field"><label>實際銷售套數</label><span>${p.sold||'—'}</span></div>
         <div class="detail-field"><label>單份成本</label><span style="color:var(--rust);font-family:'DM Mono',monospace;font-size:1.1rem">${p.cost?'$'+parseFloat(p.cost).toFixed(2):'—'}</span></div>
         <div class="detail-field"><label>單份預算</label><span>${p.budget?'$'+p.budget:'—'}</span></div>
+        <div class="detail-field"><label>執行價值評分</label><span>${p.rating?starsHTML(p.rating)+'（'+p.rating+'/5）':'未評分'}</span></div>
       </div>
     </div>
     <div class="detail-section">
@@ -1564,10 +1617,11 @@ function clearImage() {
 // ══════ FORM ══════
 function openNewForm(){
   document.getElementById('modal-title').textContent='新增專案';
-  ['id','name','year','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  ['id','name','year','designer','sale','price','prints','sold','cost','budget','paper','gsm','notes'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
   document.getElementById('f-year').value=new Date().getFullYear();
   document.getElementById('f-month').value=String(new Date().getMonth()+1).padStart(2,'0');
   document.getElementById('f-status').value='規劃中';
+  loadRating(0);
   buildItemsFromSaved([]);
   currentImageBase64 = null;
   setImagePreview(null);
@@ -1579,11 +1633,12 @@ function openEditById(id){
   if(!p)return;
   document.getElementById('modal-title').textContent='編輯專案';
   document.getElementById('f-id').value=p.id;
-  ['name','year','designer','sale','price','prints','cost','budget','paper','gsm','notes'].forEach(f=>{
+  ['name','year','designer','sale','price','prints','sold','cost','budget','paper','gsm','notes'].forEach(f=>{
     const el=document.getElementById('f-'+f);if(el)el.value=p[f]||'';
   });
   document.getElementById('f-status').value=p.status||'規劃中';
   document.getElementById('f-month').value=p.month||'';
+  loadRating(p.rating||0);
   buildItemsFromSaved(p.items||[]);
   currentImageBase64 = p.image || null;
   setImagePreview(currentImageBase64);
@@ -1607,10 +1662,12 @@ async function saveProject(){
     sale:document.getElementById('f-sale').value.trim(),
     price:document.getElementById('f-price').value.trim(),
     prints:document.getElementById('f-prints').value.trim(),
+    sold:document.getElementById('f-sold').value.trim(),
     cost:document.getElementById('f-cost').value.trim(),
     budget:document.getElementById('f-budget').value.trim(),
     paper:document.getElementById('f-paper').value.trim(),
     gsm:document.getElementById('f-gsm').value.trim(),
+    rating:parseInt(document.getElementById('f-rating-val').value)||0,
     process:readProcessFromForm(),
     notes:document.getElementById('f-notes').value.trim(),
     status:document.getElementById('f-status').value,

@@ -618,7 +618,14 @@
         </div>
         <div class="form-group">
           <label class="form-label">執行設計 <span class="req">*</span></label>
-          <input class="form-input" id="f-designer" placeholder="e.g. 郭小光、京珍、竹子、予禛">
+          <select class="form-select" id="f-designer">
+            <option value="">請選擇</option>
+            <option value="郭小光">郭小光</option>
+            <option value="竹子">竹子</option>
+            <option value="京珍">京珍</option>
+            <option value="予禛">予禛</option>
+            <option value="小艾">小艾</option>
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label">販售形式</label>
@@ -690,7 +697,7 @@
 
       <div class="section-divider">專案執行評分</div>
       <div class="form-group full">
-        <label class="form-label" style="margin-bottom:0.5rem">執行價值評估</label>
+        <label class="form-label" style="margin-bottom:0.5rem">執行價值評估 <span style="font-size:0.72rem;color:#aaa;font-weight:400">（僅限專案執行人填寫）</span></label>
         <div class="star-rating" id="f-rating">
           <span class="star" data-val="1" onclick="setRating(1)">★</span>
           <span class="star" data-val="2" onclick="setRating(2)">★</span>
@@ -929,7 +936,7 @@ function buildCard(p) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.2rem">
         ${p.budget?`<div class="cost-display" style="text-align:right"><div class="cost-label">單份預算</div><div class="cost-val" style="color:var(--sage)">$${p.budget}</div></div>`:''}
-        ${p.rating?starsHTML(p.rating):''}
+        ${p.rating?`<div class="cost-display" style="text-align:right"><div class="cost-label">專案執行價值</div><div>${starsHTML(p.rating)}</div></div>`:''}
       </div>
     </div>
   </div>`;

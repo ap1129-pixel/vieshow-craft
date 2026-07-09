@@ -21,13 +21,16 @@
     --border: #c4b89a;
     --shadow: rgba(26,21,16,0.15);
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     font-family: 'Noto Sans TC', sans-serif;
     background: var(--paper);
     color: var(--ink);
     min-height: 100vh;
+    min-height: -webkit-fill-available;
     font-size: 15px;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
     background-image:
       radial-gradient(ellipse at 20% 50%, rgba(184,146,42,0.06) 0%, transparent 60%),
       radial-gradient(ellipse at 80% 20%, rgba(74,92,78,0.05) 0%, transparent 50%);
@@ -61,6 +64,7 @@
     background: var(--cream); border-right: 1px solid var(--border);
     padding: 1.5rem 0; position: sticky; top: 64px;
     height: calc(100vh - 64px); overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .sidebar-section { padding: 0 1.25rem 1rem; margin-bottom: 0.5rem; }
   .sidebar-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
@@ -72,7 +76,7 @@
   .stat-pill-label { font-size: 0.85rem; color: #555; font-weight: 500; }
   .stat-pill-val { font-family: 'DM Mono', monospace; font-size: 0.9rem; font-weight: 500; color: var(--gold); }
 
-  main { padding: 2rem 2.5rem; overflow-y: auto; }
+  main { padding: 2rem 2.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .view { display: none; }
   .view.active { display: block; }
 
@@ -193,7 +197,7 @@
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(26,21,16,0.65); z-index: 200; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; width: min(780px, 94vw); max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(26,21,16,0.35); animation: slideUp 0.25s ease; }
+  .modal { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; width: min(780px, 94vw); max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 24px 64px rgba(26,21,16,0.35); animation: slideUp 0.25s ease; }
   @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
   .modal-header { padding: 1.4rem 1.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
   .modal-title { font-size: 1.4rem; font-weight: 700; }
@@ -1378,7 +1382,7 @@ function openDetail(id) {
         <div class="detail-field"><label>實際銷售套數</label><span>${p.sold||'—'}</span></div>
         <div class="detail-field"><label>單份成本</label><span style="color:var(--rust);font-family:'DM Mono',monospace;font-size:1.1rem">${p.cost?'$'+parseFloat(p.cost).toFixed(2):'—'}</span></div>
         <div class="detail-field"><label>單份預算</label><span>${p.budget?'$'+p.budget:'—'}</span></div>
-        <div class="detail-field"><label>執行價值評分</label><span>${p.rating?starsHTML(p.rating)+'（'+p.rating+'/5）':'未評分'}</span></div>
+        <div class="detail-field"><label>執行價值評分</label><span style="display:flex;align-items:center;gap:0.5rem">${p.rating?`${starsHTML(p.rating)}<span style="font-size:0.85rem;color:#888">（${p.rating}/5）</span>`:'未評分'}</span></div>
       </div>
     </div>
     <div class="detail-section">
@@ -1392,7 +1396,7 @@ function openDetail(id) {
       <div class="detail-heading">後加工工藝</div>
       <div class="process-tags">${pl.length?pl.map(t=>`<span class="tag highlight">${t}</span>`).join(''):'<span style="color:#aaa">無</span>'}</div>
     </div>
-    ${p.notes?`<div class="detail-section"><div class="detail-heading">備註</div><p style="font-size:0.95rem;line-height:1.8;font-weight:500">${p.notes}</p></div>`:''}`;
+    ${p.notes?`<div class="detail-section"><div class="detail-heading">備註</div><p style="font-size:0.95rem;line-height:1.8;font-weight:500;white-space:pre-wrap">${p.notes}</p></div>`:''}`;
   openModal('detail-modal');
 }
 function editCurrentProject(){closeModal('detail-modal');openEditById(currentDetailId);}

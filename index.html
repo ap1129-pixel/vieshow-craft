@@ -2,7 +2,10 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>VieShow Craft — 專案管理系統</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -99,7 +102,7 @@
   .card-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: auto; padding-top: 0.6rem; }
   .tag { font-size: 0.75rem; font-weight: 500; padding: 0.22rem 0.55rem; background: var(--cream); border: 1px solid var(--border); border-radius: 2px; }
   .tag.highlight { background: rgba(184,146,42,0.12); border-color: var(--gold); color: #7a5e10; }
-  .card-footer { padding: 0.75rem 1.4rem; background: var(--cream); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .card-footer { padding: 0.75rem 1.4rem; background: var(--cream); border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 0.5rem; }
   .cost-display .cost-val { font-family: 'DM Mono', monospace; font-size: 1.05rem; color: var(--rust); font-weight: 500; }
   .cost-display .cost-label { font-size: 0.72rem; color: #999; font-weight: 500; }
 
@@ -216,7 +219,7 @@
   .star:hover { color: var(--gold-light); }
 
   /* Card star display */
-  .card-stars { display:flex; gap:2px; font-size:0.9rem; }
+  .card-stars { display:flex; gap:2px; font-size:0.9rem; justify-content:flex-end; }
   .card-stars .s { color:#ddd; }
   .card-stars .s.on { color:var(--gold); }
 
@@ -427,6 +430,11 @@
 
     /* Process grid */
     .process-grid { grid-template-columns: repeat(2, 1fr); }
+
+    /* Lock screen mobile fix */
+    .lock-box { padding: 0 1rem; }
+    .lock-input { font-size: 1rem; }
+    .lock-btn { font-size: 1rem; padding: 0.9rem; }
   }
 </style>
 </head>
@@ -925,6 +933,7 @@ function buildCard(p) {
         <div class="card-meta-item"><label>販售形式</label><span>${p.sale||'—'}</span></div>
         <div class="card-meta-item"><label>紙材</label><span>${p.paper?(p.paper+(p.gsm?' · '+p.gsm:'')):'—'}</span></div>
         <div class="card-meta-item"><label>印製份數</label><span>${p.prints||'—'}</span></div>
+        <div class="card-meta-item"><label>單份預算</label><span>${p.budget?'$'+p.budget:'—'}</span></div>
         <div class="card-meta-item"><label>後加工</label><span>${pl.length?'共 '+pl.length+' 項':'—'}</span></div>
       </div>
       <div class="card-tags">${tags}</div>
@@ -934,9 +943,9 @@ function buildCard(p) {
         <div class="cost-label">單份成本</div>
         <div class="cost-val">${hasCost?'$'+parseFloat(p.cost).toFixed(2):'—'}</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.2rem">
-        ${p.budget?`<div class="cost-display" style="text-align:right"><div class="cost-label">單份預算</div><div class="cost-val" style="color:var(--sage)">$${p.budget}</div></div>`:''}
-        ${p.rating?`<div class="cost-display" style="text-align:right"><div class="cost-label">專案執行價值</div><div>${starsHTML(p.rating)}</div></div>`:''}
+      <div class="cost-display" style="text-align:right">
+        <div class="cost-label">專案執行價值</div>
+        <div>${p.rating?starsHTML(p.rating):'<span style="color:#ddd;font-size:0.9rem">★★★★★</span>'}</div>
       </div>
     </div>
   </div>`;

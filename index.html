@@ -558,7 +558,7 @@
       </div>
       <table class="data-table">
         <thead><tr>
-          <th>年份</th><th>品名</th><th>品項</th><th>執行設計</th><th>販售形式</th>
+          <th>年份</th><th>品名</th><th>品項</th><th>執行設計</th><th>片商</th><th>販售形式</th>
           <th>總印份</th><th>單份成本</th><th>預算</th><th>後加工工藝</th><th>操作</th>
         </tr></thead>
         <tbody id="table-body"></tbody>
@@ -796,7 +796,7 @@ async function sbFetch(url, options={}) {
 }
 
 async function dbGetAll() {
-  return await sbFetch(`${API}?order=created_at.asc`);
+  return await sbFetch(`${API}?order=created_at.asc&select=*`);
 }
 async function dbUpsert(proj) {
   return await sbFetch(API, {
@@ -1039,7 +1039,11 @@ function sortByDate(data, order) {
   return [...data].sort((a, b) => {
     const ka = `${a.year||'0000'}${a.month||'00'}`;
     const kb = `${b.year||'0000'}${b.month||'00'}`;
-    return order === 'asc' ? ka.localeCompare(kb) : kb.localeCompare(ka);
+    if (ka !== kb) return order === 'asc' ? ka.localeCompare(kb) : kb.localeCompare(ka);
+    // 同年月內依 created_at 排列
+    const ta = a.created_at || '';
+    const tb = b.created_at || '';
+    return order === 'asc' ? ta.localeCompare(tb) : tb.localeCompare(ta);
   });
 }
 
@@ -1070,6 +1074,7 @@ function renderTable() {
       <td style="font-weight:700">${p.name}</td>
       <td>${p.item}</td>
       <td>${p.designer||'—'}</td>
+      <td>${p.distributor||'—'}</td>
       <td>${p.sale||'—'}</td>
       <td class="cost-mono">${p.prints||'—'}</td>
       <td class="cost-mono">${p.cost?'$'+parseFloat(p.cost).toFixed(2):'—'}</td>
@@ -1080,7 +1085,7 @@ function renderTable() {
         <button class="btn btn-ghost btn-sm" style="color:var(--ink);margin-top:2px" onclick="openEditById('${p.id}')">編輯</button>
       </td>
     </tr>`;
-  }).join('')||`<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:#aaa;font-size:0.95rem">無符合資料</td></tr>`;
+  }).join('')||`<tr><td colspan="11" style="text-align:center;padding:2.5rem;color:#aaa;font-size:0.95rem">無符合資料</td></tr>`;
 }
 
 function renderAnalytics() {

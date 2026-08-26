@@ -76,9 +76,9 @@
   .stat-pill-label { font-size: 0.85rem; color: #555; font-weight: 500; }
   .stat-pill-val { font-family: 'DM Mono', monospace; font-size: 0.9rem; font-weight: 500; color: var(--gold); }
 
-  main { padding: 2rem 2.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  main { padding: 2rem 2.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-x: hidden; }
   .view { display: none; }
-  .view.active { display: block; }
+  .view.active { display: block; min-height: 50vh; }
 
   .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--ink); }
   .page-title { font-size: 2rem; font-weight: 900; line-height: 1; }
@@ -268,6 +268,24 @@
   .material-pill { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500; background: var(--cream); border: 1px solid var(--border); display: flex; align-items: center; gap: 0.45rem; }
   .material-pill-count { font-family: 'DM Mono', monospace; font-size: 0.72rem; background: var(--ink); color: var(--gold-light); padding: 0.1rem 0.45rem; border-radius: 10px; }
 
+  /* Bar chart tooltip */
+  .bar-tooltip {
+    position: fixed;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.6rem 0.9rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.7;
+    border-left: 3px solid var(--gold);
+    pointer-events: none;
+    z-index: 999;
+    white-space: pre;
+    box-shadow: 0 4px 16px rgba(26,21,16,0.3);
+    display: none;
+  }
+
   /* Detail */
   .detail-section { margin-bottom: 1.5rem; }
   .detail-heading { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
@@ -430,7 +448,7 @@
 
     /* Table scroll */
     .data-table { font-size: 0.82rem; }
-    #view-table { overflow-x: auto; }
+    #view-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
     /* Process grid */
     .process-grid { grid-template-columns: repeat(2, 1fr); }
@@ -439,6 +457,15 @@
     .lock-box { padding: 0 1rem; }
     .lock-input { font-size: 1rem; }
     .lock-btn { font-size: 1rem; padding: 0.9rem; }
+
+    /* iOS Safari scroll fix */
+    .app-layout { display: block; min-height: calc(100vh - 56px); }
+    main { height: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; }
+    .projects-grid { -webkit-overflow-scrolling: touch; }
+    .modal-overlay { -webkit-overflow-scrolling: touch; }
+    .modal { -webkit-overflow-scrolling: touch; max-height: 85vh; }
+    .page-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+    .page-header > div:last-child { width: 100%; display: flex; flex-wrap: wrap; gap: 0.5rem; }
   }
 </style>
 </head>
@@ -642,7 +669,28 @@
         </div>
         <div class="form-group">
           <label class="form-label">片商</label>
-          <input class="form-input" id="f-distributor" placeholder="e.g. 索尼、迪士尼、環球">
+          <select class="form-select" id="f-distributor">
+            <option value="">請選擇</option>
+            <optgroup label="八大片商">
+              <option value="娛樂部">娛樂部</option>
+              <option value="環球">環球</option>
+              <option value="迪士尼">迪士尼</option>
+              <option value="索尼">索尼</option>
+              <option value="華納">華納</option>
+              <option value="派拉蒙">派拉蒙</option>
+            </optgroup>
+            <optgroup label="獨立片商">
+              <option value="木棉花">木棉花</option>
+              <option value="羚邦">羚邦</option>
+              <option value="甲上">甲上</option>
+              <option value="采昌">采昌</option>
+              <option value="車庫">車庫</option>
+              <option value="華映">華映</option>
+              <option value="牽猴子">牽猴子</option>
+              <option value="東昊">東昊</option>
+              <option value="其他">其他</option>
+            </optgroup>
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label">販售形式</label>
@@ -754,6 +802,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="bar-tooltip" id="bar-tooltip"></div>
 
 <!-- Crop Modal -->
 <div class="crop-overlay" id="crop-overlay">
@@ -1179,17 +1228,44 @@ function renderAnalytics() {
     </div>`;
   }).join('') || '<div style="color:#aaa">尚無品項資料（請編輯專案更新品項）</div>';
 
-  // ── 片商合作統計 ──
-  const distCount={};
-  data.forEach(p=>{ if(p.distributor) distCount[p.distributor]=(distCount[p.distributor]||0)+1; });
-  const distSorted=Object.entries(distCount).sort((a,b)=>b[1]-a[1]);
-  const maxDist=distSorted.length?distSorted[0][1]:1;
-  document.getElementById('chart-distributor').innerHTML=distSorted.map(([d,c])=>`
-    <div class="bar-row">
+  // ── 片商合作統計（以A3海報張數排名）──
+  const distStats={};
+  data.forEach(p=>{
+    if(!p.distributor) return;
+    const d = p.distributor;
+    if(!distStats[d]) distStats[d]={ projects:0, posterQty:0, postcard:0, postcardSheets:0, other:0 };
+    distStats[d].projects++;
+    if(p.items && p.items.length){
+      p.items.forEach(it=>{
+        if(it.type==='poster_a3') distStats[d].posterQty += it.qty||0;
+        else if(it.type==='postcard'){
+          distStats[d].postcard += it.qty||0;
+          if(it.note && parseInt(it.note)) distStats[d].postcardSheets += (it.qty||0)*parseInt(it.note);
+        } else {
+          distStats[d].other += it.qty||0;
+        }
+      });
+    }
+  });
+  const distSorted = Object.entries(distStats).sort((a,b)=>b[1].posterQty-a[1].posterQty);
+  const maxDist = distSorted.length ? Math.max(distSorted[0][1].posterQty, 1) : 1;
+  document.getElementById('chart-distributor').innerHTML = distSorted.map(([d,s])=>{
+    const tooltip = [
+      `專案數：${s.projects} 件`,
+      s.posterQty ? `A3海報：${s.posterQty} 張` : '',
+      s.postcard ? `明信片：${s.postcard} 組${s.postcardSheets?'（共'+s.postcardSheets+'張）':''}` : '',
+      s.other ? `其他品項：${s.other} 件` : '',
+    ].filter(Boolean).join('&#10;');
+    const pct = (s.posterQty/maxDist*100).toFixed(1);
+    return `<div class="bar-row" style="position:relative">
       <div class="bar-label">${d}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(c/maxDist*100).toFixed(1)}%;background:linear-gradient(90deg,#3a2a1a,#8a6a3a)"></div></div>
-      <div class="bar-val">${c} 件</div>
-    </div>`).join('')||'<div style="color:#aaa">尚無片商資料</div>';
+      <div class="bar-track" style="position:relative">
+        <div class="bar-fill dist-bar" style="width:${pct}%;background:linear-gradient(90deg,#3a2a1a,#8a6a3a)"
+          data-tip="${tooltip}"></div>
+      </div>
+      <div class="bar-val">${s.posterQty||0} 張</div>
+    </div>`;
+  }).join('')||'<div style="color:#aaa">尚無片商資料</div>';
 
   // ── 年度專案量 ──
   const yCount={};
@@ -1733,6 +1809,23 @@ async function saveProject(){
     setLoadingState(false);
   }
 }
+
+// ══════ BAR TOOLTIP ══════
+const barTooltip = document.getElementById('bar-tooltip');
+document.addEventListener('mousemove', e => {
+  const bar = e.target.closest('.dist-bar');
+  if (bar) {
+    const tip = bar.getAttribute('data-tip');
+    if (tip) {
+      barTooltip.innerHTML = tip.replace(/&#10;/g, '\n');
+      barTooltip.style.display = 'block';
+      barTooltip.style.left = (e.clientX + 14) + 'px';
+      barTooltip.style.top = (e.clientY - 10) + 'px';
+    }
+  } else {
+    barTooltip.style.display = 'none';
+  }
+});
 
 document.querySelectorAll('.modal-overlay').forEach(el=>{
   // 只有非表單的 modal 才允許點外面關閉，form-modal 不關閉避免誤觸

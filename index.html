@@ -581,7 +581,7 @@
         </div>
       </div>
       <div class="table-controls">
-        <input class="search-box" id="table-search" placeholder="搜尋品名、品項、執行設計、販售形式…" oninput="renderTable()">
+        <input class="search-box" id="table-search" placeholder="搜尋品名、品項、執行設計、片商、販售形式…" oninput="renderTable()">
       </div>
       <table class="data-table">
         <thead><tr>
@@ -1115,7 +1115,7 @@ function renderTable() {
   const yr = document.getElementById('table-year-filter')?.value || '';
   const data = sortByDate(DB_CACHE.filter(p => !yr || p.year === yr), tableSortOrder);
   const q=(document.getElementById('table-search')?.value||'').toLowerCase();
-  const filtered=q?data.filter(p=>[p.name,p.item,p.sale,p.paper,p.designer,...getProcessList(p.process)].join(' ').toLowerCase().includes(q)):data;
+  const filtered=q?data.filter(p=>[p.name,p.item,p.sale,p.paper,p.designer,p.distributor||'',...getProcessList(p.process)].join(' ').toLowerCase().includes(q)):data;
   document.getElementById('table-body').innerHTML=filtered.map(p=>{
     const pl=getProcessList(p.process);
     return `<tr>
@@ -1228,12 +1228,12 @@ function renderAnalytics() {
     </div>`;
   }).join('') || '<div style="color:#aaa">尚無品項資料（請編輯專案更新品項）</div>';
 
-  // ── 片商合作統計（以A3海報張數排名）──
+  // ── 片商合作統計（以總品項量排名）──
   const distStats={};
   data.forEach(p=>{
     if(!p.distributor) return;
     const d = p.distributor;
-    if(!distStats[d]) distStats[d]={ projects:0, posterQty:0, postcard:0, postcardSheets:0, other:0 };
+    if(!distStats[d]) distStats[d]={ projects:0, posterQty:0, postcard:0, postcardSheets:0, other:0, otherQty:0 };
     distStats[d].projects++;
     if(p.items && p.items.length){
       p.items.forEach(it=>{
@@ -1247,23 +1247,31 @@ function renderAnalytics() {
       });
     }
   });
-  const distSorted = Object.entries(distStats).sort((a,b)=>b[1].posterQty-a[1].posterQty);
-  const maxDist = distSorted.length ? Math.max(distSorted[0][1].posterQty, 1) : 1;
+  // 總量 = 海報張數 + 明信片組數 + 其他件數，作為排名依據
+  const distSorted = Object.entries(distStats).sort((a,b)=>{
+    const totalA = a[1].posterQty + a[1].postcard + a[1].other;
+    const totalB = b[1].posterQty + b[1].postcard + b[1].other;
+    return totalB - totalA;
+  });
+  const maxDist = distSorted.length ? Math.max(...distSorted.map(([,s])=>s.posterQty+s.postcard+s.other), 1) : 1;
   document.getElementById('chart-distributor').innerHTML = distSorted.map(([d,s])=>{
+    const total = s.posterQty + s.postcard + s.other;
     const tooltip = [
       `專案數：${s.projects} 件`,
       s.posterQty ? `A3海報：${s.posterQty} 張` : '',
       s.postcard ? `明信片：${s.postcard} 組${s.postcardSheets?'（共'+s.postcardSheets+'張）':''}` : '',
       s.other ? `其他品項：${s.other} 件` : '',
+      !s.posterQty && !s.postcard && !s.other ? '（尚未填寫品項資料）' : '',
     ].filter(Boolean).join('&#10;');
-    const pct = (s.posterQty/maxDist*100).toFixed(1);
+    const pct = total > 0 ? (total/maxDist*100).toFixed(1) : 2; // 0量時顯示極細條
+    const label = s.posterQty ? `${s.posterQty} 張海報` : s.postcard ? `${s.postcard} 組明信片` : `${s.projects} 件專案`;
     return `<div class="bar-row" style="position:relative">
       <div class="bar-label">${d}</div>
       <div class="bar-track" style="position:relative">
-        <div class="bar-fill dist-bar" style="width:${pct}%;background:linear-gradient(90deg,#3a2a1a,#8a6a3a)"
+        <div class="bar-fill dist-bar" style="width:${pct}%;background:linear-gradient(90deg,#3a2a1a,#8a6a3a);min-width:6px"
           data-tip="${tooltip}"></div>
       </div>
-      <div class="bar-val">${s.posterQty||0} 張</div>
+      <div class="bar-val">${label}</div>
     </div>`;
   }).join('')||'<div style="color:#aaa">尚無片商資料</div>';
 
